@@ -1,0 +1,828 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Penny 金庫">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#FCFBF8">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="apple-touch-icon.png">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,-apple-system,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Penny 金庫</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500&family=Noto+Serif+TC:wght@500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* Layout: a single gold-ruled ledger column — tulip crest, period bar, glass-gold totals, item breakdown, entries by day */
+:root{
+  --bg:#FCFBF8; --surface:rgba(255,255,255,.82); --solid:#FFFFFF; --ink:#2B2720; --muted:#8C8270; --line:#EFE7D6;
+  --gold:#B08A3A; --gold-deep:#8C6A25; --gold-line:rgba(176,138,58,.42); --gold-faint:rgba(176,138,58,.10); --glass:rgba(255,255,255,.55);
+  --tulip:var(--gold); --tulip-soft:rgba(176,138,58,.12); --on-accent:#3A2C10;
+  --leaf:#567A5E; --leaf-soft:rgba(86,122,94,.12); --warn:#B0602E; --warn-soft:rgba(176,96,46,.12);
+  --shadow:0 10px 30px rgba(120,95,40,.10);
+  --display:"Noto Serif TC","Songti TC",serif; --latin:"Cormorant Garamond","Noto Serif TC",serif; --body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#14120D; --surface:rgba(32,29,22,.82); --solid:#201D16; --ink:#F3EDDF; --muted:#A99E86; --line:#352F22;
+  --gold:#DDBB70; --gold-deep:#EACB86; --gold-line:rgba(221,187,112,.40); --gold-faint:rgba(221,187,112,.08); --glass:rgba(32,29,22,.55);
+  --tulip-soft:rgba(221,187,112,.14); --on-accent:#F6E7C4;
+  --leaf:#93C6A0; --leaf-soft:rgba(147,198,160,.14); --warn:#F0A774; --warn-soft:rgba(240,167,116,.14);
+  --shadow:0 10px 30px rgba(0,0,0,.35); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#14120D; --surface:rgba(32,29,22,.82); --solid:#201D16; --ink:#F3EDDF; --muted:#A99E86; --line:#352F22;
+  --gold:#DDBB70; --gold-deep:#EACB86; --gold-line:rgba(221,187,112,.40); --gold-faint:rgba(221,187,112,.08); --glass:rgba(32,29,22,.55);
+  --tulip-soft:rgba(221,187,112,.14); --on-accent:#F6E7C4;
+  --leaf:#93C6A0; --leaf-soft:rgba(147,198,160,.14); --warn:#F0A774; --warn-soft:rgba(240,167,116,.14);
+  --shadow:0 10px 30px rgba(0,0,0,.35); color-scheme:dark}
+*{box-sizing:border-box}
+html,body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.6;letter-spacing:.02em}
+/* faint tulip line pattern behind everything */
+.backdrop{position:fixed;inset:0;pointer-events:none;z-index:0;color:var(--gold);opacity:.09}
+.backdrop svg{position:absolute;width:220px;height:auto}
+.backdrop .t1{top:40px;right:-60px;transform:rotate(14deg)}
+.backdrop .t2{bottom:60px;left:-70px;transform:rotate(-12deg)}
+.wrap{position:relative;z-index:1;max-width:560px;margin:0 auto;padding-block:26px 130px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:24px}
+.crest{text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px;position:relative}
+.crest .tulip{width:46px;height:auto;color:var(--gold)}
+.crest .en{font-family:var(--latin);font-style:italic;font-size:14px;letter-spacing:.24em;color:var(--gold);text-transform:uppercase}
+h1{font-family:var(--display);font-weight:700;font-size:26px;margin:0;letter-spacing:.18em;text-wrap:balance}
+.sub{color:var(--muted);font-size:13px;margin:0;letter-spacing:.08em}
+.settings-btn{position:absolute;top:0;right:0}
+.rule{display:flex;align-items:center;gap:10px;color:var(--gold);width:100%}
+.rule::before,.rule::after{content:"";flex:1;height:0;border-top:1px solid var(--gold-line);box-shadow:0 3px 0 -2px var(--gold-line)}
+.rule i{width:7px;height:7px;border:1px solid var(--gold);transform:rotate(45deg);display:block}
+.rule.short{max-width:220px;margin:0 auto}
+h2{font-family:var(--display);font-size:16px;font-weight:700;margin:0 0 12px;letter-spacing:.2em;display:flex;align-items:center;gap:10px;color:var(--ink)}
+h2::before{content:"";width:6px;height:6px;border:1px solid var(--gold);transform:rotate(45deg)}
+h2::after{content:"";flex:1;border-top:1px solid var(--gold-line)}
+button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.glassbtn{background:var(--glass);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid var(--gold-line);border-radius:999px;color:var(--gold-deep);transition:background .15s,border-color .15s}
+.glassbtn:hover{background:var(--gold-faint);border-color:var(--gold)}
+.ghost{padding:6px 14px;font-size:12px;letter-spacing:.1em}
+.framed{background:var(--surface);border:1px solid var(--gold-line);border-radius:20px;box-shadow:var(--shadow);position:relative}
+.framed::after{content:"";position:absolute;inset:4px;border:1px solid var(--gold-faint);border-radius:16px;pointer-events:none}
+.monthbar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px}
+.monthbar .arrow{width:40px;height:40px;font-size:20px;line-height:1;padding:0;position:relative;z-index:1}
+.mlabel{text-align:center;font-family:var(--display);font-size:19px;letter-spacing:.12em}
+.seg{display:flex;gap:4px;justify-content:center;margin-top:4px;position:relative;z-index:1}
+.seg button{background:none;border:1px solid transparent;font-size:12px;color:var(--muted);padding:2px 12px;border-radius:999px;letter-spacing:.1em}
+.seg button[aria-pressed="true"]{border-color:var(--gold-line);background:var(--gold-faint);color:var(--gold-deep);font-weight:700}
+.hero{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.stat{padding:16px 16px 14px}
+.stat .k{font-size:12px;color:var(--muted);letter-spacing:.14em}
+.stat .v{font-family:var(--display);font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.25;margin-top:4px}
+.stat .v small{font-family:var(--body);font-size:12px;font-weight:500;color:var(--muted);margin-left:4px}
+.stat.main{grid-column:1/-1;text-align:center;padding:22px 16px 20px;overflow:hidden;background:linear-gradient(180deg,var(--gold-faint),transparent 70%),var(--surface)}
+.stat.main .v{font-size:38px;color:var(--gold-deep);letter-spacing:.04em}
+.stat.main .mark{position:absolute;right:10px;bottom:-30px;width:60px;opacity:.35}
+.stat.owe .v{color:var(--warn)}
+.stat.net .v{color:var(--leaf)}
+.row .sub2{font-size:12px;color:var(--leaf);margin-top:2px}
+.bless-sum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:14px 16px;border-bottom:1px solid var(--line);position:relative;z-index:1;text-align:center;font-variant-numeric:tabular-nums}
+.bless-sum .k{font-size:12px;color:var(--muted);letter-spacing:.1em}
+.bless-sum .v{font-family:var(--display);font-weight:700;font-size:18px}
+.bless-sum .v.net{color:var(--leaf)}
+.rows{overflow:hidden}
+.row{display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:center;padding:12px 16px;border-top:1px solid var(--line);font-variant-numeric:tabular-nums;position:relative;z-index:1}
+.row:first-child{border-top:0}
+.row .n{min-width:0}
+.row .c{color:var(--muted);font-size:13px}
+.row .a{font-weight:700;min-width:72px;text-align:right}
+.bar{height:2px;background:linear-gradient(90deg,var(--gold),var(--gold-line));margin-top:6px}
+.none{padding:16px;color:var(--muted);font-size:14px;position:relative;z-index:1}
+.day{font-size:12px;color:var(--gold-deep);letter-spacing:.16em;margin:16px 2px 8px;display:flex;align-items:center;gap:8px}
+.day::after{content:"";flex:1;border-top:1px dashed var(--gold-line)}
+.entry{padding:13px 16px;display:grid;grid-template-columns:1fr auto;gap:4px 12px;margin-bottom:10px}
+.entry>*{position:relative;z-index:1}
+.entry .who .ig{display:inline-block;margin-left:8px;font-weight:400;font-size:12px;color:var(--gold-deep);text-decoration:none;border:1px solid var(--gold-line);border-radius:999px;padding:0 8px;letter-spacing:.02em}
+.entry .who{font-weight:700;min-width:0;overflow-wrap:anywhere;letter-spacing:.06em}
+.entry .amt{font-family:var(--display);font-weight:700;font-variant-numeric:tabular-nums;text-align:right;color:var(--gold-deep)}
+.entry .meta{color:var(--muted);font-size:13px;min-width:0;overflow-wrap:anywhere}
+.entry .acts{display:flex;gap:6px;justify-content:flex-end;align-items:center;flex-wrap:wrap}
+.pill{font-size:12px;border-radius:999px;padding:2px 10px;border:1px solid transparent;letter-spacing:.06em}
+.pill.paid{background:var(--leaf-soft);color:var(--leaf);border-color:var(--leaf-soft)}
+.pill.unpaid{background:var(--warn-soft);color:var(--warn);font-weight:700;border-color:var(--warn)}
+.pill.tag{background:var(--gold-faint);color:var(--gold-deep);border-color:var(--gold-line)}
+.mini{background:none;border:0;color:var(--muted);font-size:12px;padding:2px 6px;text-decoration:underline;text-underline-offset:3px}
+.mini.danger{color:var(--warn)}
+.empty{text-align:center;padding:30px 16px;color:var(--muted)}
+.empty>*{position:relative;z-index:1}
+.empty .tulip{width:34px;display:block;margin:0 auto 8px}
+.empty b{display:block;color:var(--ink);font-family:var(--display);font-size:17px;margin-bottom:4px;letter-spacing:.1em}
+.fab{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));padding:13px 30px;font-size:16px;font-weight:700;letter-spacing:.2em;z-index:5;box-shadow:0 8px 24px rgba(140,105,40,.22),inset 0 0 0 3px var(--glass),inset 0 0 0 4px var(--gold-line);border-color:var(--gold)}
+.sheet-bg{position:fixed;inset:0;background:rgba(20,16,8,.38);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--solid);width:100%;max-width:560px;max-height:92%;overflow:auto;border-top:1px solid var(--gold);border-radius:18px 18px 0 0;padding-block:20px calc(20px + env(safe-area-inset-bottom,0px));padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:max(18px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:14px;box-shadow:0 -10px 40px rgba(0,0,0,.15)}
+.sheet h2{margin:0}
+label{display:flex;flex-direction:column;gap:5px;font-size:13px;color:var(--muted);letter-spacing:.06em}
+input,select{font:inherit;color:var(--ink);background:transparent;border:0;border-bottom:1px solid var(--gold-line);border-radius:0;padding:8px 2px;width:100%;min-width:0}
+input:focus,select:focus{border-bottom-color:var(--gold)}
+select option{background:var(--solid);color:var(--ink)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chips button{border:1px solid var(--gold-line);background:var(--glass);border-radius:999px;padding:7px 14px;font-size:14px;color:var(--ink)}
+.chips button[aria-pressed="true"]{background:var(--gold-faint);border-color:var(--gold);color:var(--gold-deep);font-weight:700;box-shadow:inset 0 0 0 1px var(--gold)}
+.actions{display:flex;gap:10px;margin-top:4px}
+.primary{flex:1;padding:13px;font-size:16px;font-weight:700;letter-spacing:.2em;background:var(--gold-faint);border-color:var(--gold);border-radius:999px}
+.secondary{background:none;border:1px solid var(--line);border-radius:999px;padding:13px 20px;color:var(--muted)}
+.price-row{display:grid;grid-template-columns:1fr 72px 72px auto;gap:8px;align-items:end}
+.itemcard{margin-top:12px;border:1px solid var(--gold-line);border-radius:18px;padding:14px 16px;background:var(--gold-faint);display:flex;flex-direction:column;gap:10px}
+.ic-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ic-top b{font-family:var(--display);font-size:17px;letter-spacing:.12em}
+.ic-mats{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:14px;font-variant-numeric:tabular-nums}
+.ic-mats li{display:grid;grid-template-columns:1fr auto auto;gap:12px}
+.ic-mats li .q{color:var(--muted)}
+.ic-mats li .m{min-width:64px;text-align:right}
+.ic-mats .none{color:var(--muted);display:block}
+.ic-sum{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;border-top:1px dashed var(--gold-line);padding-top:10px;text-align:center;font-variant-numeric:tabular-nums}
+.ic-sum span{display:block;font-size:12px;color:var(--muted);letter-spacing:.1em}
+.ic-sum b{font-family:var(--display);font-size:18px}
+.ic-sum .net b{color:var(--leaf)}
+#matWrap{display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--gold-line);padding-top:10px}
+#matWrap[hidden]{display:none}
+.mats{margin-top:12px;border:1px solid var(--gold-line);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;background:var(--gold-faint)}
+.mats-head{font-family:var(--display);font-weight:700;letter-spacing:.1em;display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.mats-head span{font-family:var(--body);font-weight:400;font-size:12px;color:var(--muted);letter-spacing:.04em}
+.mat-row{display:grid;grid-template-columns:1fr auto 64px;gap:10px;align-items:center;font-variant-numeric:tabular-nums}
+.mat-row .mn{min-width:0;font-size:14px}.mat-row .mn small{display:block;color:var(--muted);font-size:12px}
+.mat-row .ms{text-align:right;font-weight:700;color:var(--gold-deep)}
+.stepper{display:flex;align-items:center;border:1px solid var(--gold-line);border-radius:999px;overflow:hidden;background:var(--solid)}
+.stepper button{width:34px;height:34px;border:0;background:none;font-size:18px;color:var(--gold-deep)}
+.stepper input{width:44px;text-align:center;border:0;padding:6px 0;background:transparent;-moz-appearance:textfield}
+.stepper input::-webkit-inner-spin-button,.stepper input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.mats-total{text-align:right;font-size:14px;color:var(--gold-deep);font-weight:700;border-top:1px dashed var(--gold-line);padding-top:8px}
+.mat-head,.mat-edit{display:grid;grid-template-columns:1fr 56px 72px auto;gap:8px;align-items:end}
+.mat-head{font-size:12px;color:var(--muted);letter-spacing:.06em}
+.price-head{display:grid;grid-template-columns:1fr 72px 72px auto;gap:8px;font-size:12px;color:var(--muted);letter-spacing:.06em}
+.note{font-size:12px;color:var(--muted);margin:0}
+.toast{position:fixed;left:50%;transform:translateX(-50%);top:calc(14px + env(safe-area-inset-top,0px));background:var(--glass);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid var(--gold);color:var(--gold-deep);padding:8px 18px;border-radius:999px;font-size:14px;z-index:30;letter-spacing:.1em}
+.status{font-size:12px;color:var(--muted);text-align:center}
+.foot{text-align:center;color:var(--gold);font-family:var(--latin);font-style:italic;letter-spacing:.2em;font-size:13px;display:flex;flex-direction:column;gap:8px;align-items:center}
+@media (max-width:380px){.two{grid-template-columns:1fr}.stat .v{font-size:22px}.stat.main .v{font-size:32px}}
+@media (prefers-reduced-motion:no-preference){.sheet{animation:up .2s ease-out}@keyframes up{from{transform:translateY(24px);opacity:.6}}}
+.cover{position:fixed;inset:0;z-index:40;background:radial-gradient(ellipse at 50% 38%,var(--solid),var(--bg) 75%);display:flex;align-items:center;justify-content:center;padding:max(24px,env(safe-area-inset-top,0px)) max(24px,env(safe-area-inset-right,0px)) max(24px,env(safe-area-inset-bottom,0px)) max(24px,env(safe-area-inset-left,0px));transition:opacity .6s ease,visibility .6s;cursor:pointer}
+.cover.out{opacity:0;visibility:hidden}
+.cover-frame{width:min(340px,100%);aspect-ratio:3/4.4;max-height:100%;border:1.5px solid var(--gold);border-radius:28px;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center}
+.cover-frame::after{content:"";position:absolute;inset:9px;border:1px solid var(--gold-line);border-radius:20px;pointer-events:none}
+.cover-frame .dia{position:absolute;left:50%;width:10px;height:10px;border:1px solid var(--gold);transform:translateX(-50%) rotate(45deg);background:var(--bg)}
+.cover-frame .dia.t{top:-6px}.cover-frame .dia.b{bottom:-6px}
+.cover .tulip{width:84px;color:var(--gold)}
+.cover .en{font-family:var(--latin);font-style:italic;letter-spacing:.3em;color:var(--gold);font-size:14px;text-transform:uppercase}
+.cover h1{font-size:28px}
+.cover .tap{font-size:12px;letter-spacing:.3em;color:var(--muted);margin-top:18px}
+@media (prefers-reduced-motion:no-preference){.cover .tulip{animation:bloom 1.4s ease-out both}.cover .tap{animation:breathe 2.4s ease-in-out infinite}
+@keyframes bloom{from{opacity:.2;transform:translateY(8px) scale(.94)}}@keyframes breathe{50%{opacity:.45}}}
+@media (prefers-reduced-motion:reduce){.cover{transition:none}}
+.sprite{position:absolute;width:0;height:0;overflow:hidden}
+.crest .tulip{width:54px;height:auto}
+.cover .tulip{width:78px;height:auto}
+.stat.main .mark{width:60px;height:auto}
+.empty .tulip{width:34px;height:auto}
+
+/* accordion item picker */
+.tiles{display:flex;flex-direction:column;gap:6px}
+.tile-group{font-size:12px;color:var(--gold-deep);letter-spacing:.2em;margin:2px 2px 0}
+.tile-row{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x proximity;padding:2px 2px 6px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.tile-row::-webkit-scrollbar{display:none}
+.tile{flex:0 0 auto;min-width:92px;scroll-snap-align:start;border:1px solid var(--gold-line);background:var(--glass);border-radius:16px;padding:10px 14px;text-align:left;display:flex;flex-direction:column;gap:2px;color:var(--ink)}
+.tile .tn{font-size:15px;letter-spacing:.06em;white-space:nowrap}
+.tile .tp{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.tile[aria-pressed="true"]{border-color:var(--gold);background:var(--gold-faint);box-shadow:inset 0 0 0 1px var(--gold)}
+.tile[aria-pressed="true"] .tn{color:var(--gold-deep);font-weight:700}
+.detail{border:1px solid var(--gold-line);border-radius:18px;padding:12px 14px;background:var(--gold-faint);display:flex;flex-direction:column;gap:10px;margin-top:4px}
+.detail .dn{font-family:var(--display);font-weight:700;letter-spacing:.12em;font-size:16px;display:flex;justify-content:space-between;align-items:baseline}
+.detail .dn small{font-family:var(--body);font-weight:400;font-size:12px;color:var(--muted);letter-spacing:.04em}
+.detail .mats-total{display:none}
+.detail #mats{display:flex;flex-direction:column;gap:8px}
+.acc{display:flex;flex-direction:column;gap:8px}
+.acc-group{font-size:12px;color:var(--gold-deep);letter-spacing:.2em;margin:6px 2px 0}
+.acc-item{border:1px solid var(--gold-line);border-radius:16px;background:var(--glass);overflow:hidden}
+.acc-item.open{border-color:var(--gold);background:var(--gold-faint)}
+.acc-head{width:100%;display:grid;grid-template-columns:1fr auto 18px;gap:10px;align-items:center;background:none;border:0;padding:12px 14px;text-align:left;color:var(--ink)}
+.acc-head .an{font-size:15px;letter-spacing:.08em}
+.acc-item.open .acc-head .an{font-weight:700;color:var(--gold-deep)}
+.acc-head .ap{font-variant-numeric:tabular-nums;color:var(--muted);font-size:14px}
+.acc-head .chev{color:var(--gold);transition:transform .2s;font-size:18px;line-height:1}
+.acc-item.open .chev{transform:rotate(90deg)}
+.acc-body{padding:2px 14px 14px;display:flex;flex-direction:column;gap:10px;border-top:1px dashed var(--gold-line)}
+.acc-body .mats-total{display:none}
+.acc-body #mats{display:flex;flex-direction:column;gap:8px;padding-top:10px}
+.acc-sum{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:center;font-variant-numeric:tabular-nums;background:var(--solid);border-radius:12px;padding:10px 6px}
+.acc-sum span{display:block;font-size:12px;color:var(--muted);letter-spacing:.1em}
+.acc-sum b{font-family:var(--display);font-size:18px}
+.acc-sum .net b{color:var(--leaf)}
+.acc-note{font-size:13px;color:var(--muted);padding-top:8px}
+/* app shell: the page scrolls inside its own frame, without the browser's rubber-band */
+html{box-sizing:border-box}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+.app{position:relative;height:100%;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.sheet{overscroll-behavior:contain}
+button,.acc-head,.chips button{touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:6px;border-radius:999px}
+.tabs::after{border-radius:999px}
+.tabs button{position:relative;z-index:1;border:1px solid transparent;background:none;border-radius:999px;padding:10px;font-family:var(--display);font-size:15px;letter-spacing:.3em;color:var(--muted)}
+.tabs button[aria-selected="true"]{background:var(--gold-faint);border-color:var(--gold-line);color:var(--gold-deep);font-weight:700}
+.admin-sum{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);overflow:hidden}
+.admin-sum>div{background:var(--solid);padding:14px 16px;position:relative;z-index:1}
+.admin-sum span{display:block;font-size:12px;color:var(--muted);letter-spacing:.12em}
+.admin-sum b{font-family:var(--display);font-size:22px;font-variant-numeric:tabular-nums}
+.admin-sum .big{grid-column:1/-1;text-align:center;padding:20px 16px;background:linear-gradient(180deg,var(--gold-faint),transparent 80%),var(--solid)}
+.admin-sum .big b{font-size:34px;color:var(--gold-deep)}
+.admin-sum .net b{color:var(--leaf)}.admin-sum .owe b{color:var(--warn)}.admin-sum .owe{grid-column:1/-1}
+#viewAdmin .note{margin:8px 4px 0}
+.prep-total{font-weight:700;background:var(--gold-faint)}
+.dayprep{padding:12px 16px;margin-bottom:10px}
+.sess-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
+.sess-head h2{margin:0;flex:1}
+.sess-pick{display:flex;gap:8px;align-items:center}
+.sess-pick select{flex:1}
+.dayprep .sx{display:flex;gap:8px;justify-content:flex-end;margin-top:6px}
+.dayprep .snote{font-size:12px;color:var(--muted);margin:-2px 0 6px}
+.dayprep .money{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:center;border-top:1px solid var(--gold-line);margin-top:10px;padding-top:8px;font-variant-numeric:tabular-nums}
+.dayprep .money span{display:block;font-size:11px;color:var(--muted);letter-spacing:.1em}
+.dayprep .money b{font-family:var(--display);font-size:16px}
+.dayprep .money .net b{color:var(--leaf)}
+.dayprep.unsched{border-style:dashed}
+.danger-btn{color:var(--warn)!important;border-color:var(--warn)!important}
+.dayprep>*{position:relative;z-index:1}
+.dayprep .dh{display:flex;justify-content:space-between;gap:8px;font-family:var(--display);font-weight:700;letter-spacing:.08em;margin-bottom:6px}
+.dayprep .dh span{font-family:var(--body);font-weight:400;font-size:13px;color:var(--gold-deep)}
+.dayprep ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:14px}
+.dayprep li{display:flex;flex-direction:column;gap:1px;border-top:1px dashed var(--line);padding-top:6px}
+.dayprep li:first-child{border-top:0;padding-top:0}
+.dayprep li small{color:var(--muted);font-size:12px}
+.dayprep .dt{margin-top:8px;font-size:13px;color:var(--gold-deep);text-align:right}
+.backup-row{display:flex;gap:10px;flex-wrap:wrap}.filebtn{display:inline-flex;align-items:center;cursor:pointer;color:var(--gold-deep)}
+</style>
+</head>
+<body>
+
+
+<svg class="sprite" width="0" height="0" aria-hidden="true" focusable="false"><defs>
+<linearGradient id="tWash" x1="150" y1="20" x2="50" y2="165" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FBE6E2"/><stop offset=".55" stop-color="#F4CFC8"/><stop offset="1" stop-color="#E8B1A8"/></linearGradient>
+<linearGradient id="tFront" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FCEBE8"/><stop offset="1" stop-color="#F3CBC4"/></linearGradient>
+<linearGradient id="tFoil" x1="130" y1="30" x2="150" y2="110" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#F3DFA2"/><stop offset=".5" stop-color="#C9A24C"/><stop offset="1" stop-color="#E2C57E"/></linearGradient>
+<linearGradient id="tLeaf" x1="40" y1="170" x2="104" y2="300" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#F4E2AE"/><stop offset=".35" stop-color="#C9A24C"/><stop offset=".6" stop-color="#E9D08F"/><stop offset="1" stop-color="#A88230"/></linearGradient>
+<radialGradient id="tGlow"><stop offset="0" stop-color="#FFF8E2" stop-opacity=".9"/><stop offset="1" stop-color="#FFF8E2" stop-opacity="0"/></radialGradient>
+<clipPath id="tFrontClip"><path d="M108 150 C86 140 86 96 92 66 C96 46 104 30 112 26 C132 28 146 52 148 82 C150 118 134 144 108 150 Z"/></clipPath>
+<clipPath id="tLeafClip"><path d="M103 298 C98 252 78 206 44 170 C56 214 70 262 103 298 Z"/></clipPath>
+</defs>
+<symbol id="tulipArt" viewBox="18 12 160 316">
+<path d="M64 30 C86 10 128 14 148 40 C166 64 166 108 150 138 C134 166 96 174 70 160 C44 146 34 112 38 82 C40 60 48 42 64 30 Z" fill="url(#tWash)" opacity=".92"/>
+<path d="M108 150 C82 150 62 132 56 106 C50 80 50 58 54 44 C70 46 84 58 94 76" fill="#F8DAD5" opacity=".55"/><path d="M108 150 C86 140 86 96 92 66 C96 46 104 30 112 26 C132 28 146 52 148 82 C150 118 134 144 108 150 Z" fill="url(#tFront)"/>
+<g clip-path="url(#tFrontClip)"><path d="M118 22C140 30 156 70 152 120C146 90 138 62 126 44C122 36 118 30 118 22Z" fill="url(#tFoil)" opacity=".92"/></g>
+<g clip-path="url(#tLeafClip)"><path d="M103 298 C98 252 78 206 44 170 C56 214 70 262 103 298 Z" fill="url(#tLeaf)"/><path d="M60 200 C74 236 88 266 100 290" fill="none" stroke="#FFF4D2" stroke-width="1.3" opacity=".85"/></g>
+<circle cx="53.1" cy="183.0" r="1.56" fill="#B8902F" opacity="0.81"/><circle cx="20.8" cy="297.9" r="0.26" fill="#B8902F" opacity="0.74"/><circle cx="56.6" cy="167.7" r="0.65" fill="#F2C9C2" opacity="0.53"/><circle cx="47.9" cy="176.5" r="0.41" fill="#C9A24C" opacity="0.79"/><circle cx="36.3" cy="216.4" r="0.34" fill="#C9A24C" opacity="0.65"/><circle cx="35.6" cy="293.0" r="0.59" fill="#B8902F" opacity="0.97"/><circle cx="70.8" cy="160.6" r="0.56" fill="#F6EBCB" opacity="0.65"/><circle cx="21.7" cy="303.5" r="0.28" fill="#F2C9C2" opacity="0.92"/><circle cx="30.7" cy="240.3" r="0.76" fill="#E3C47A" opacity="0.79"/><circle cx="34.8" cy="312.6" r="0.81" fill="#F2C9C2" opacity="0.87"/><circle cx="29.7" cy="282.2" r="0.54" fill="#F2C9C2" opacity="0.83"/><circle cx="25.7" cy="302.7" r="0.25" fill="#C9A24C" opacity="0.72"/><circle cx="59.5" cy="136.8" r="0.67" fill="#F2C9C2" opacity="0.71"/><circle cx="31.0" cy="240.6" r="0.56" fill="#F2C9C2" opacity="0.96"/><circle cx="29.2" cy="301.4" r="0.29" fill="#FFFFFF" opacity="0.87"/><circle cx="24.9" cy="316.0" r="0.24" fill="#E3C47A" opacity="0.91"/><circle cx="32.3" cy="217.2" r="1.36" fill="#B8902F" opacity="0.95"/><circle cx="43.4" cy="208.7" r="0.37" fill="#C9A24C" opacity="0.72"/><circle cx="84.6" cy="173.7" r="0.43" fill="#C9A24C" opacity="0.70"/><circle cx="28.4" cy="204.2" r="1.32" fill="#C9A24C" opacity="0.75"/><circle cx="48.6" cy="192.2" r="0.64" fill="#F6EBCB" opacity="0.62"/><circle cx="63.6" cy="147.7" r="0.78" fill="#C9A24C" opacity="0.89"/><circle cx="59.0" cy="170.9" r="0.48" fill="#B8902F" opacity="0.76"/><circle cx="84.0" cy="164.0" r="0.46" fill="#F2C9C2" opacity="0.93"/><circle cx="28.1" cy="172.2" r="0.40" fill="#F6EBCB" opacity="0.58"/><circle cx="44.6" cy="137.2" r="0.64" fill="#C9A24C" opacity="0.84"/><circle cx="85.1" cy="144.3" r="1.27" fill="#C9A24C" opacity="0.62"/><circle cx="42.6" cy="257.7" r="0.91" fill="#F2C9C2" opacity="0.85"/><circle cx="62.5" cy="141.7" r="1.43" fill="#E3C47A" opacity="0.67"/><circle cx="44.0" cy="172.2" r="1.23" fill="#F6EBCB" opacity="0.56"/><circle cx="35.8" cy="204.0" r="0.38" fill="#FFFFFF" opacity="0.90"/><circle cx="36.0" cy="208.3" r="0.49" fill="#E3C47A" opacity="0.99"/><circle cx="37.4" cy="275.0" r="0.27" fill="#E3C47A" opacity="0.78"/><circle cx="70.4" cy="137.9" r="1.96" fill="#E3C47A" opacity="0.80"/><circle cx="22.6" cy="284.1" r="0.27" fill="#F6EBCB" opacity="0.97"/><circle cx="48.8" cy="231.5" r="0.33" fill="#C9A24C" opacity="0.85"/><circle cx="23.1" cy="225.6" r="0.42" fill="#FFFFFF" opacity="0.91"/><circle cx="34.6" cy="269.1" r="0.28" fill="#B8902F" opacity="0.97"/><circle cx="82.5" cy="131.4" r="0.45" fill="#F6EBCB" opacity="0.63"/><circle cx="36.7" cy="166.2" r="0.67" fill="#FFFFFF" opacity="0.57"/><circle cx="67.7" cy="147.6" r="0.65" fill="#F2C9C2" opacity="0.95"/><circle cx="32.0" cy="314.8" r="0.29" fill="#F6EBCB" opacity="0.79"/><circle cx="27.5" cy="305.4" r="0.25" fill="#F2C9C2" opacity="0.91"/><circle cx="31.9" cy="298.0" r="0.69" fill="#F2C9C2" opacity="0.79"/><circle cx="62.3" cy="160.3" r="0.66" fill="#FFFFFF" opacity="0.55"/><circle cx="71.0" cy="142.5" r="0.45" fill="#F2C9C2" opacity="0.86"/><circle cx="20.5" cy="292.6" r="0.82" fill="#F6EBCB" opacity="0.58"/><circle cx="37.9" cy="296.0" r="0.26" fill="#E3C47A" opacity="0.88"/><circle cx="33.7" cy="268.4" r="0.66" fill="#B8902F" opacity="0.83"/><circle cx="37.8" cy="297.5" r="0.26" fill="#C9A24C" opacity="0.97"/><circle cx="36.7" cy="193.9" r="0.56" fill="#F2C9C2" opacity="0.86"/><circle cx="42.4" cy="191.7" r="0.46" fill="#E3C47A" opacity="0.59"/><circle cx="74.1" cy="157.5" r="0.58" fill="#B8902F" opacity="0.67"/><circle cx="32.2" cy="320.8" r="0.51" fill="#F2C9C2" opacity="0.95"/><circle cx="41.2" cy="153.3" r="1.39" fill="#F2C9C2" opacity="0.60"/><circle cx="69.6" cy="150.6" r="0.45" fill="#F6EBCB" opacity="0.90"/><circle cx="50.5" cy="236.6" r="0.42" fill="#E3C47A" opacity="0.87"/><circle cx="38.0" cy="235.6" r="0.41" fill="#F2C9C2" opacity="0.53"/><circle cx="42.3" cy="158.9" r="0.42" fill="#FFFFFF" opacity="0.66"/><circle cx="35.6" cy="308.1" r="0.73" fill="#FFFFFF" opacity="0.78"/><circle cx="34.5" cy="230.1" r="0.32" fill="#FFFFFF" opacity="0.63"/><circle cx="54.2" cy="196.0" r="0.67" fill="#F6EBCB" opacity="0.87"/><circle cx="37.3" cy="235.1" r="0.33" fill="#F2C9C2" opacity="0.81"/><circle cx="41.8" cy="247.6" r="0.31" fill="#E3C47A" opacity="0.81"/><circle cx="45.1" cy="193.1" r="0.38" fill="#B8902F" opacity="0.84"/><circle cx="44.8" cy="224.5" r="1.14" fill="#F2C9C2" opacity="0.73"/><circle cx="63.2" cy="167.4" r="0.40" fill="#FFFFFF" opacity="0.92"/><circle cx="20.5" cy="229.6" r="0.92" fill="#E3C47A" opacity="0.74"/><circle cx="23.2" cy="255.8" r="0.80" fill="#F6EBCB" opacity="0.65"/><circle cx="78.2" cy="166.8" r="0.47" fill="#E3C47A" opacity="0.99"/><circle cx="67.6" cy="150.4" r="1.42" fill="#F6EBCB" opacity="0.68"/><circle cx="36.6" cy="207.7" r="0.46" fill="#B8902F" opacity="0.94"/><circle cx="45.4" cy="220.1" r="0.77" fill="#C9A24C" opacity="0.56"/><circle cx="58.2" cy="159.2" r="0.66" fill="#C9A24C" opacity="0.86"/><circle cx="35.0" cy="158.2" r="1.45" fill="#C9A24C" opacity="0.96"/><circle cx="35.8" cy="305.3" r="0.40" fill="#E3C47A" opacity="0.74"/><circle cx="39.1" cy="191.3" r="0.74" fill="#F6EBCB" opacity="0.85"/><circle cx="50.4" cy="203.8" r="0.50" fill="#F6EBCB" opacity="0.98"/><circle cx="49.4" cy="240.4" r="0.84" fill="#C9A24C" opacity="0.82"/><circle cx="28.6" cy="248.7" r="0.30" fill="#B8902F" opacity="0.65"/><circle cx="68.4" cy="141.1" r="1.99" fill="#B8902F" opacity="0.92"/><circle cx="57.7" cy="193.5" r="0.58" fill="#B8902F" opacity="0.98"/><circle cx="33.1" cy="173.6" r="1.09" fill="#E3C47A" opacity="0.82"/><circle cx="84.3" cy="156.6" r="0.48" fill="#FFFFFF" opacity="0.73"/><circle cx="34.2" cy="199.7" r="1.16" fill="#C9A24C" opacity="0.90"/><circle cx="36.3" cy="198.4" r="0.38" fill="#E3C47A" opacity="0.50"/><circle cx="43.7" cy="184.2" r="0.67" fill="#C9A24C" opacity="0.57"/><circle cx="54.3" cy="217.1" r="0.72" fill="#E3C47A" opacity="0.96"/><circle cx="66.3" cy="143.3" r="0.47" fill="#FFFFFF" opacity="0.61"/><circle cx="93.8" cy="141.4" r="0.49" fill="#E3C47A" opacity="0.92"/><circle cx="24.2" cy="224.3" r="0.33" fill="#B8902F" opacity="0.65"/><circle cx="50.8" cy="171.9" r="0.53" fill="#E3C47A" opacity="0.69"/><circle cx="27.3" cy="311.8" r="0.24" fill="#F2C9C2" opacity="0.62"/><circle cx="59.4" cy="153.6" r="2.09" fill="#B8902F" opacity="0.73"/><circle cx="48.0" cy="229.2" r="1.50" fill="#C9A24C" opacity="0.53"/><circle cx="69.1" cy="182.4" r="0.38" fill="#F6EBCB" opacity="0.86"/><circle cx="45.5" cy="242.1" r="0.32" fill="#FFFFFF" opacity="0.67"/><circle cx="53.7" cy="182.6" r="0.43" fill="#B8902F" opacity="0.93"/><circle cx="23.1" cy="271.9" r="0.28" fill="#E3C47A" opacity="0.79"/><circle cx="52.6" cy="198.7" r="0.47" fill="#F2C9C2" opacity="0.60"/><circle cx="24.8" cy="310.4" r="0.24" fill="#FFFFFF" opacity="0.89"/><circle cx="57.1" cy="145.2" r="0.74" fill="#FFFFFF" opacity="0.83"/><circle cx="61.9" cy="178.9" r="0.38" fill="#FFFFFF" opacity="0.83"/><circle cx="37.9" cy="160.9" r="1.19" fill="#F6EBCB" opacity="0.96"/><circle cx="31.7" cy="212.2" r="0.66" fill="#C9A24C" opacity="0.51"/><circle cx="32.9" cy="225.1" r="0.98" fill="#F2C9C2" opacity="0.80"/><circle cx="48.8" cy="209.5" r="0.41" fill="#FFFFFF" opacity="0.50"/><circle cx="49.2" cy="140.9" r="0.63" fill="#C9A24C" opacity="0.54"/><circle cx="42.7" cy="256.1" r="0.66" fill="#F6EBCB" opacity="0.87"/><circle cx="29.0" cy="284.3" r="0.85" fill="#C9A24C" opacity="0.58"/><circle cx="39.2" cy="131.7" r="1.80" fill="#F6EBCB" opacity="0.53"/><circle cx="46.3" cy="187.4" r="0.51" fill="#B8902F" opacity="0.83"/><circle cx="48.9" cy="246.9" r="0.80" fill="#E3C47A" opacity="0.82"/><circle cx="28.5" cy="239.0" r="0.66" fill="#E3C47A" opacity="0.89"/><circle cx="35.1" cy="164.4" r="0.66" fill="#F2C9C2" opacity="0.68"/><circle cx="24.2" cy="280.5" r="0.94" fill="#C9A24C" opacity="0.60"/><circle cx="32.7" cy="245.6" r="0.31" fill="#B8902F" opacity="0.64"/><circle cx="49.1" cy="219.6" r="0.38" fill="#B8902F" opacity="0.82"/><circle cx="21.7" cy="264.6" r="1.24" fill="#F6EBCB" opacity="0.51"/><circle cx="64.9" cy="163.8" r="0.81" fill="#F6EBCB" opacity="0.82"/><circle cx="74.1" cy="184.2" r="0.38" fill="#C9A24C" opacity="0.76"/><circle cx="59.5" cy="175.5" r="0.60" fill="#E3C47A" opacity="0.87"/><circle cx="30.8" cy="271.3" r="0.28" fill="#C9A24C" opacity="0.83"/><circle cx="57.8" cy="140.4" r="1.17" fill="#E3C47A" opacity="0.91"/><circle cx="42.3" cy="192.9" r="0.81" fill="#FFFFFF" opacity="0.89"/><circle cx="42.0" cy="250.5" r="0.76" fill="#C9A24C" opacity="0.74"/><circle cx="57.9" cy="165.2" r="0.82" fill="#FFFFFF" opacity="0.61"/><circle cx="23.9" cy="312.3" r="0.36" fill="#F2C9C2" opacity="0.86"/><circle cx="25.7" cy="202.5" r="0.38" fill="#B8902F" opacity="0.87"/><circle cx="76.3" cy="139.4" r="0.79" fill="#FFFFFF" opacity="0.53"/><circle cx="25.3" cy="314.7" r="0.24" fill="#B8902F" opacity="0.60"/><circle cx="71.2" cy="139.5" r="0.46" fill="#B8902F" opacity="0.63"/><circle cx="48.9" cy="170.3" r="1.44" fill="#F2C9C2" opacity="0.58"/><circle cx="23.0" cy="280.1" r="0.37" fill="#FFFFFF" opacity="0.81"/><circle cx="95.3" cy="149.8" r="0.44" fill="#E3C47A" opacity="0.83"/><circle cx="47.4" cy="160.6" r="0.45" fill="#C9A24C" opacity="0.80"/><circle cx="81.1" cy="163.9" r="1.23" fill="#E3C47A" opacity="0.85"/><circle cx="43.9" cy="200.2" r="0.73" fill="#E3C47A" opacity="0.84"/><circle cx="69.0" cy="183.4" r="0.93" fill="#E3C47A" opacity="0.67"/><circle cx="36.7" cy="291.9" r="0.26" fill="#FFFFFF" opacity="0.61"/><circle cx="40.2" cy="213.2" r="1.18" fill="#B8902F" opacity="0.86"/><circle cx="33.2" cy="290.1" r="0.31" fill="#E3C47A" opacity="0.81"/><circle cx="25.9" cy="244.7" r="0.32" fill="#E3C47A" opacity="0.94"/><circle cx="63.5" cy="200.0" r="1.12" fill="#FFFFFF" opacity="0.70"/><circle cx="67.3" cy="193.1" r="0.51" fill="#F2C9C2" opacity="0.56"/><circle cx="31.5" cy="305.6" r="0.30" fill="#F2C9C2" opacity="0.52"/><circle cx="25.7" cy="318.7" r="0.62" fill="#FFFFFF" opacity="0.85"/><circle cx="32.7" cy="215.7" r="0.34" fill="#FFFFFF" opacity="0.69"/><circle cx="74.4" cy="156.1" r="0.98" fill="#FFFFFF" opacity="0.84"/><circle cx="38.8" cy="167.6" r="1.22" fill="#F2C9C2" opacity="0.56"/><circle cx="33.6" cy="176.7" r="0.42" fill="#FFFFFF" opacity="0.79"/><circle cx="36.2" cy="267.2" r="0.31" fill="#B8902F" opacity="0.94"/><circle cx="34.4" cy="314.2" r="0.74" fill="#F2C9C2" opacity="0.72"/><circle cx="51.7" cy="198.6" r="0.78" fill="#B8902F" opacity="0.76"/><circle cx="51.2" cy="202.5" r="0.36" fill="#B8902F" opacity="0.77"/><circle cx="83.7" cy="162.6" r="0.42" fill="#F2C9C2" opacity="0.88"/><circle cx="36.8" cy="247.6" r="0.55" fill="#E3C47A" opacity="0.90"/><circle cx="33.1" cy="163.2" r="1.50" fill="#F2C9C2" opacity="0.55"/><circle cx="33.9" cy="248.2" r="0.90" fill="#FFFFFF" opacity="0.81"/><circle cx="37.9" cy="206.9" r="0.97" fill="#F6EBCB" opacity="0.87"/><circle cx="39.1" cy="279.0" r="0.52" fill="#F6EBCB" opacity="1.00"/><circle cx="27.2" cy="274.2" r="0.51" fill="#F2C9C2" opacity="0.79"/><circle cx="32.2" cy="235.3" r="0.92" fill="#C9A24C" opacity="0.60"/><circle cx="87.3" cy="154.7" r="0.46" fill="#E3C47A" opacity="0.63"/><circle cx="22.2" cy="208.4" r="0.40" fill="#F6EBCB" opacity="0.50"/><circle cx="35.3" cy="208.0" r="0.43" fill="#C9A24C" opacity="0.53"/><circle cx="30.1" cy="227.0" r="0.34" fill="#C9A24C" opacity="0.96"/><circle cx="26.9" cy="238.6" r="0.34" fill="#F2C9C2" opacity="0.84"/><circle cx="44.0" cy="138.1" r="1.16" fill="#FFFFFF" opacity="0.70"/><circle cx="38.9" cy="247.3" r="0.30" fill="#F2C9C2" opacity="0.63"/><circle cx="41.5" cy="161.8" r="0.51" fill="#E3C47A" opacity="0.59"/><circle cx="48.2" cy="251.7" r="0.60" fill="#F2C9C2" opacity="0.64"/><circle cx="31.3" cy="216.0" r="0.38" fill="#F2C9C2" opacity="0.94"/><circle cx="73.6" cy="152.3" r="1.24" fill="#F2C9C2" opacity="0.63"/><circle cx="24.0" cy="308.2" r="0.42" fill="#E3C47A" opacity="0.94"/><circle cx="53.5" cy="213.1" r="0.49" fill="#F2C9C2" opacity="0.65"/><circle cx="21.0" cy="275.7" r="0.28" fill="#F2C9C2" opacity="0.90"/><circle cx="34.9" cy="227.5" r="0.33" fill="#E3C47A" opacity="0.94"/><circle cx="29.5" cy="311.6" r="0.24" fill="#FFFFFF" opacity="0.85"/><circle cx="32.9" cy="189.1" r="0.63" fill="#F6EBCB" opacity="0.82"/><circle cx="34.8" cy="199.8" r="1.23" fill="#F2C9C2" opacity="0.79"/><circle cx="23.4" cy="285.4" r="0.46" fill="#F6EBCB" opacity="0.58"/><circle cx="31.9" cy="260.9" r="0.33" fill="#E3C47A" opacity="0.76"/><circle cx="46.6" cy="195.2" r="0.37" fill="#E3C47A" opacity="0.92"/><circle cx="57.5" cy="126.0" r="0.78" fill="#FFFFFF" opacity="0.56"/><circle cx="25.6" cy="295.1" r="1.00" fill="#B8902F" opacity="0.51"/><circle cx="51.9" cy="185.7" r="0.75" fill="#E3C47A" opacity="0.55"/><circle cx="46.0" cy="134.1" r="1.06" fill="#FFFFFF" opacity="0.63"/><circle cx="25.1" cy="313.6" r="0.76" fill="#B8902F" opacity="0.88"/><circle cx="43.1" cy="214.5" r="0.72" fill="#C9A24C" opacity="0.52"/><circle cx="72.9" cy="144.5" r="0.87" fill="#B8902F" opacity="0.65"/><circle cx="52.3" cy="153.4" r="2.07" fill="#C9A24C" opacity="0.88"/><circle cx="21.3" cy="263.7" r="1.19" fill="#F2C9C2" opacity="0.89"/><circle cx="47.8" cy="194.9" r="0.36" fill="#FFFFFF" opacity="0.80"/><circle cx="56.2" cy="184.1" r="0.41" fill="#F2C9C2" opacity="0.85"/><circle cx="33.8" cy="303.8" r="0.34" fill="#F2C9C2" opacity="0.73"/><circle cx="24.3" cy="203.8" r="0.41" fill="#F6EBCB" opacity="0.90"/><circle cx="44.5" cy="217.2" r="1.36" fill="#E3C47A" opacity="0.99"/><circle cx="28.9" cy="210.6" r="1.08" fill="#FFFFFF" opacity="0.62"/><circle cx="41.8" cy="242.6" r="0.32" fill="#F2C9C2" opacity="0.97"/><circle cx="26.7" cy="182.3" r="0.83" fill="#B8902F" opacity="0.71"/><circle cx="58.3" cy="153.7" r="0.59" fill="#E3C47A" opacity="0.50"/><circle cx="49.1" cy="133.5" r="0.44" fill="#C9A24C" opacity="0.64"/><circle cx="26.4" cy="315.9" r="0.25" fill="#FFFFFF" opacity="0.95"/><circle cx="21.5" cy="202.1" r="0.42" fill="#B8902F" opacity="0.52"/><circle cx="31.8" cy="306.1" r="0.30" fill="#B8902F" opacity="0.64"/><circle cx="84.0" cy="152.6" r="0.49" fill="#F2C9C2" opacity="0.69"/><circle cx="66.1" cy="193.2" r="0.74" fill="#B8902F" opacity="0.51"/><circle cx="41.9" cy="172.7" r="0.57" fill="#E3C47A" opacity="0.94"/><circle cx="38.7" cy="275.5" r="1.22" fill="#FFFFFF" opacity="0.78"/><circle cx="32.2" cy="317.7" r="0.46" fill="#F6EBCB" opacity="0.67"/><circle cx="63.5" cy="180.0" r="0.37" fill="#F6EBCB" opacity="0.84"/><circle cx="22.2" cy="217.6" r="0.50" fill="#FFFFFF" opacity="0.52"/><circle cx="37.7" cy="166.9" r="0.48" fill="#E3C47A" opacity="0.52"/><circle cx="68.0" cy="186.5" r="0.40" fill="#B8902F" opacity="0.70"/><circle cx="38.8" cy="206.2" r="0.75" fill="#FFFFFF" opacity="0.99"/><circle cx="65.7" cy="197.7" r="0.58" fill="#FFFFFF" opacity="0.73"/><circle cx="38.9" cy="244.0" r="1.04" fill="#E3C47A" opacity="0.98"/><circle cx="37.5" cy="251.4" r="0.32" fill="#C9A24C" opacity="0.99"/><circle cx="50.9" cy="184.5" r="1.17" fill="#F2C9C2" opacity="0.63"/><circle cx="30.6" cy="214.6" r="0.35" fill="#B8902F" opacity="0.76"/><circle cx="49.6" cy="227.7" r="0.33" fill="#B8902F" opacity="0.73"/><circle cx="59.7" cy="180.2" r="0.40" fill="#FFFFFF" opacity="0.57"/><circle cx="92.4" cy="140.4" r="1.11" fill="#E3C47A" opacity="0.83"/><circle cx="28.8" cy="268.1" r="0.96" fill="#F2C9C2" opacity="0.56"/><circle cx="31.8" cy="257.1" r="0.31" fill="#C9A24C" opacity="0.57"/><circle cx="74.7" cy="166.9" r="0.40" fill="#FFFFFF" opacity="0.63"/><circle cx="30.1" cy="200.9" r="1.58" fill="#F2C9C2" opacity="0.83"/><circle cx="31.1" cy="281.4" r="1.14" fill="#C9A24C" opacity="0.77"/><circle cx="25.1" cy="292.1" r="0.71" fill="#F6EBCB" opacity="0.81"/><circle cx="96.1" cy="130.7" r="2.05" fill="#C9A24C" opacity="0.79"/><circle cx="21.5" cy="205.3" r="0.36" fill="#F2C9C2" opacity="0.51"/><circle cx="74.6" cy="176.5" r="0.47" fill="#F6EBCB" opacity="0.88"/><circle cx="52.6" cy="177.9" r="0.64" fill="#C9A24C" opacity="0.91"/><circle cx="42.2" cy="140.1" r="1.29" fill="#F6EBCB" opacity="0.69"/><circle cx="23.3" cy="277.4" r="0.44" fill="#C9A24C" opacity="0.63"/><circle cx="33.3" cy="309.1" r="0.27" fill="#B8902F" opacity="0.94"/><circle cx="36.0" cy="277.4" r="0.33" fill="#C9A24C" opacity="0.64"/><circle cx="34.8" cy="198.9" r="0.59" fill="#FFFFFF" opacity="0.63"/><circle cx="41.9" cy="215.1" r="0.66" fill="#E3C47A" opacity="0.51"/><circle cx="21.3" cy="221.4" r="0.41" fill="#B8902F" opacity="0.72"/><circle cx="50.6" cy="219.7" r="0.56" fill="#FFFFFF" opacity="0.76"/><circle cx="33.5" cy="285.2" r="1.11" fill="#F2C9C2" opacity="0.64"/><circle cx="31.4" cy="219.3" r="0.35" fill="#F6EBCB" opacity="0.59"/><circle cx="44.5" cy="256.0" r="0.30" fill="#B8902F" opacity="0.77"/><circle cx="21.4" cy="307.1" r="0.32" fill="#B8902F" opacity="0.66"/><circle cx="34.8" cy="298.4" r="0.27" fill="#B8902F" opacity="0.84"/><circle cx="68.9" cy="196.2" r="0.37" fill="#C9A24C" opacity="0.72"/><circle cx="24.2" cy="250.0" r="0.49" fill="#FFFFFF" opacity="0.80"/><circle cx="37.1" cy="144.0" r="0.43" fill="#C9A24C" opacity="0.93"/><circle cx="40.7" cy="168.5" r="1.30" fill="#C9A24C" opacity="0.96"/><circle cx="38.4" cy="244.6" r="1.10" fill="#FFFFFF" opacity="0.64"/><circle cx="47.3" cy="154.4" r="1.10" fill="#F2C9C2" opacity="0.90"/><circle cx="41.3" cy="267.8" r="0.31" fill="#B8902F" opacity="0.80"/><circle cx="61.9" cy="126.9" r="1.50" fill="#F2C9C2" opacity="0.90"/><circle cx="28.4" cy="246.1" r="1.13" fill="#C9A24C" opacity="0.75"/><circle cx="63.9" cy="183.1" r="0.52" fill="#F6EBCB" opacity="0.81"/><circle cx="26.8" cy="282.8" r="0.44" fill="#B8902F" opacity="0.89"/><circle cx="29.1" cy="277.3" r="0.32" fill="#F6EBCB" opacity="0.65"/><circle cx="33.1" cy="173.4" r="0.58" fill="#F2C9C2" opacity="0.54"/><circle cx="44.4" cy="263.2" r="1.35" fill="#E3C47A" opacity="0.50"/><circle cx="77.4" cy="149.2" r="0.47" fill="#C9A24C" opacity="0.63"/><circle cx="23.8" cy="302.7" r="0.27" fill="#C9A24C" opacity="0.54"/><circle cx="79.1" cy="146.6" r="0.46" fill="#F6EBCB" opacity="0.84"/><circle cx="65.4" cy="191.3" r="0.59" fill="#C9A24C" opacity="0.54"/><circle cx="81.9" cy="159.2" r="0.49" fill="#FFFFFF" opacity="0.90"/><circle cx="32.1" cy="284.6" r="0.27" fill="#B8902F" opacity="0.62"/><circle cx="31.0" cy="310.0" r="0.27" fill="#C9A24C" opacity="0.75"/><circle cx="65.0" cy="165.0" r="1.58" fill="#E3C47A" opacity="0.75"/><circle cx="81.4" cy="145.8" r="0.42" fill="#B8902F" opacity="0.57"/><circle cx="21.0" cy="278.2" r="0.52" fill="#E3C47A" opacity="0.50"/><circle cx="31.1" cy="248.9" r="0.64" fill="#C9A24C" opacity="0.59"/><circle cx="57.4" cy="196.6" r="0.45" fill="#B8902F" opacity="0.69"/><circle cx="44.5" cy="226.4" r="0.36" fill="#E3C47A" opacity="0.88"/><circle cx="33.0" cy="167.4" r="0.51" fill="#E3C47A" opacity="0.62"/><circle cx="26.8" cy="234.1" r="0.32" fill="#F2C9C2" opacity="0.90"/><circle cx="49.7" cy="186.5" r="1.14" fill="#F6EBCB" opacity="0.86"/><circle cx="40.3" cy="143.6" r="0.45" fill="#E3C47A" opacity="0.77"/><circle cx="38.4" cy="228.3" r="1.46" fill="#F2C9C2" opacity="0.86"/><circle cx="33.5" cy="197.9" r="0.45" fill="#F6EBCB" opacity="0.54"/><circle cx="76.0" cy="125.7" r="0.53" fill="#C9A24C" opacity="0.75"/><circle cx="40.7" cy="184.8" r="1.14" fill="#E3C47A" opacity="0.78"/><circle cx="32.1" cy="306.1" r="0.85" fill="#C9A24C" opacity="0.52"/><circle cx="68.8" cy="173.0" r="0.40" fill="#FFFFFF" opacity="0.51"/><circle cx="52.8" cy="213.2" r="0.76" fill="#FFFFFF" opacity="0.88"/><circle cx="42.9" cy="181.1" r="0.58" fill="#F6EBCB" opacity="0.57"/><circle cx="38.9" cy="198.3" r="1.16" fill="#B8902F" opacity="0.87"/><circle cx="44.8" cy="189.4" r="0.57" fill="#C9A24C" opacity="0.71"/><circle cx="24.7" cy="203.3" r="0.58" fill="#F6EBCB" opacity="0.96"/><circle cx="33.3" cy="225.9" r="0.62" fill="#B8902F" opacity="0.68"/><circle cx="37.3" cy="155.7" r="1.34" fill="#FFFFFF" opacity="0.76"/><circle cx="27.6" cy="233.8" r="0.53" fill="#E3C47A" opacity="0.52"/><circle cx="61.7" cy="173.7" r="0.95" fill="#C9A24C" opacity="0.71"/><circle cx="25.2" cy="231.4" r="0.34" fill="#B8902F" opacity="0.93"/><circle cx="74.3" cy="164.0" r="0.58" fill="#B8902F" opacity="0.93"/><circle cx="51.0" cy="232.9" r="0.32" fill="#B8902F" opacity="0.92"/><circle cx="60.0" cy="156.6" r="0.54" fill="#C9A24C" opacity="0.64"/><circle cx="29.3" cy="309.1" r="0.24" fill="#F6EBCB" opacity="0.69"/><circle cx="43.0" cy="234.8" r="1.35" fill="#FFFFFF" opacity="0.65"/><circle cx="34.3" cy="318.5" r="0.33" fill="#F2C9C2" opacity="0.75"/><circle cx="36.2" cy="316.4" r="0.24" fill="#F2C9C2" opacity="0.58"/><circle cx="45.4" cy="154.6" r="0.84" fill="#F2C9C2" opacity="0.93"/><circle cx="90.7" cy="115.3" r="0.45" fill="#F2C9C2" opacity="0.72"/><circle cx="84.5" cy="153.5" r="0.71" fill="#FFFFFF" opacity="0.85"/><circle cx="51.7" cy="152.7" r="1.57" fill="#F6EBCB" opacity="0.97"/><circle cx="51.5" cy="145.9" r="0.84" fill="#B8902F" opacity="0.76"/><circle cx="51.7" cy="133.6" r="1.37" fill="#F2C9C2" opacity="0.90"/><circle cx="80.0" cy="155.7" r="0.65" fill="#FFFFFF" opacity="0.60"/><circle cx="90.1" cy="113.9" r="0.47" fill="#FFFFFF" opacity="0.97"/><circle cx="72.6" cy="153.5" r="1.34" fill="#B8902F" opacity="0.52"/><circle cx="49.1" cy="147.4" r="1.09" fill="#C9A24C" opacity="0.99"/><circle cx="56.5" cy="116.8" r="0.45" fill="#C9A24C" opacity="0.84"/><circle cx="93.4" cy="137.6" r="1.38" fill="#F2C9C2" opacity="0.73"/><circle cx="48.3" cy="142.9" r="0.73" fill="#F2C9C2" opacity="0.54"/><circle cx="96.9" cy="107.8" r="0.45" fill="#F2C9C2" opacity="0.75"/><circle cx="82.2" cy="131.0" r="1.10" fill="#E3C47A" opacity="0.81"/><circle cx="48.1" cy="126.1" r="1.36" fill="#B8902F" opacity="0.57"/><circle cx="51.3" cy="157.8" r="0.66" fill="#F6EBCB" opacity="0.98"/><circle cx="91.1" cy="102.7" r="1.32" fill="#FFFFFF" opacity="0.51"/><circle cx="67.2" cy="117.0" r="0.62" fill="#B8902F" opacity="0.65"/><circle cx="57.5" cy="113.1" r="0.48" fill="#FFFFFF" opacity="0.90"/><circle cx="95.9" cy="145.7" r="1.05" fill="#B8902F" opacity="0.95"/><circle cx="68.0" cy="158.1" r="0.64" fill="#F2C9C2" opacity="0.91"/><circle cx="96.2" cy="142.6" r="0.47" fill="#F6EBCB" opacity="0.62"/><circle cx="53.3" cy="114.4" r="0.68" fill="#B8902F" opacity="0.51"/><circle cx="68.6" cy="105.5" r="1.53" fill="#F6EBCB" opacity="0.87"/><circle cx="90.7" cy="152.9" r="1.31" fill="#B8902F" opacity="0.86"/><circle cx="83.8" cy="123.5" r="1.59" fill="#C9A24C" opacity="0.95"/><circle cx="89.9" cy="126.4" r="1.13" fill="#E3C47A" opacity="0.56"/><circle cx="65.0" cy="150.1" r="0.50" fill="#F6EBCB" opacity="0.75"/><circle cx="92.1" cy="117.4" r="0.93" fill="#C9A24C" opacity="0.97"/><circle cx="54.4" cy="90.5" r="1.35" fill="#B8902F" opacity="0.58"/><circle cx="93.9" cy="155.8" r="0.73" fill="#C9A24C" opacity="0.63"/><circle cx="62.3" cy="151.4" r="1.55" fill="#FFFFFF" opacity="0.55"/><circle cx="59.2" cy="95.3" r="0.45" fill="#B8902F" opacity="0.79"/><circle cx="84.9" cy="126.4" r="1.77" fill="#B8902F" opacity="0.70"/><circle cx="80.3" cy="92.8" r="1.26" fill="#FFFFFF" opacity="0.81"/><circle cx="92.8" cy="106.7" r="0.64" fill="#F6EBCB" opacity="0.53"/><circle cx="62.2" cy="121.3" r="1.12" fill="#F2C9C2" opacity="0.76"/><circle cx="50.6" cy="141.6" r="0.89" fill="#E3C47A" opacity="0.70"/><circle cx="50.1" cy="127.2" r="0.82" fill="#C9A24C" opacity="0.58"/><circle cx="51.3" cy="152.2" r="0.46" fill="#F2C9C2" opacity="0.77"/><circle cx="48.6" cy="127.6" r="0.74" fill="#C9A24C" opacity="0.56"/><circle cx="64.5" cy="139.2" r="0.48" fill="#F6EBCB" opacity="0.54"/><circle cx="90.0" cy="147.0" r="0.64" fill="#F2C9C2" opacity="0.59"/><circle cx="75.9" cy="97.9" r="0.47" fill="#B8902F" opacity="0.54"/><circle cx="61.7" cy="147.8" r="0.73" fill="#FFFFFF" opacity="0.53"/><circle cx="58.8" cy="152.1" r="0.77" fill="#F2C9C2" opacity="0.77"/><circle cx="50.5" cy="149.4" r="0.45" fill="#E3C47A" opacity="0.75"/><circle cx="57.6" cy="96.5" r="0.46" fill="#FFFFFF" opacity="0.65"/><circle cx="58.4" cy="153.4" r="0.51" fill="#C9A24C" opacity="0.75"/><circle cx="90.3" cy="102.6" r="0.45" fill="#FFFFFF" opacity="0.51"/><circle cx="83.9" cy="134.6" r="1.17" fill="#B8902F" opacity="0.86"/><circle cx="82.4" cy="154.5" r="0.76" fill="#FFFFFF" opacity="0.90"/><circle cx="62.3" cy="144.7" r="0.62" fill="#F6EBCB" opacity="0.99"/><circle cx="92.2" cy="132.2" r="0.66" fill="#B8902F" opacity="0.89"/><circle cx="96.7" cy="146.4" r="0.62" fill="#F6EBCB" opacity="0.93"/><circle cx="68.2" cy="150.8" r="1.57" fill="#C9A24C" opacity="0.79"/><circle cx="49.1" cy="120.6" r="0.59" fill="#F2C9C2" opacity="0.57"/><circle cx="56.3" cy="123.9" r="0.49" fill="#F6EBCB" opacity="0.67"/><circle cx="97.8" cy="149.0" r="0.62" fill="#F2C9C2" opacity="0.90"/><circle cx="58.6" cy="97.9" r="0.73" fill="#F2C9C2" opacity="1.00"/><circle cx="146" cy="58" r="14.4" fill="url(#tGlow)"/><path d="M146 49Q146 58 151.4 58Q146 58 146 67Q146 58 140.6 58Q146 58 146 49Z" fill="#FFFDF4"/><circle cx="58" cy="150" r="11.200000000000001" fill="url(#tGlow)"/><path d="M58 143Q58 150 62.2 150Q58 150 58 157Q58 150 53.8 150Q58 150 58 143Z" fill="#FFFDF4"/><circle cx="36" cy="212" r="8.0" fill="url(#tGlow)"/><path d="M36 207Q36 212 39.0 212Q36 212 36 217Q36 212 33.0 212Q36 212 36 207Z" fill="#FFFDF4"/><circle cx="128" cy="118" r="8.0" fill="url(#tGlow)"/><path d="M128 113Q128 118 131.0 118Q128 118 128 123Q128 118 125.0 118Q128 118 128 113Z" fill="#FFFDF4"/><circle cx="160" cy="96" r="6.4" fill="url(#tGlow)"/><path d="M160 92Q160 96 162.4 96Q160 96 160 100Q160 96 157.6 96Q160 96 160 92Z" fill="#FFFDF4"/>
+<g fill="none" stroke="#9C7628" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M108 150 C86 140 86 96 92 66 C96 46 104 30 112 26 C132 28 146 52 148 82 C150 118 134 144 108 150 Z"/><path d="M108 150 C82 150 62 132 56 106 C50 80 50 58 54 44 C70 46 84 58 94 76"/><path d="M74 50 C74 38 80 30 88 30 C95 30 99 38 99 50"/><path d="M88 31 C91 24 99 21 106 27"/><path d="M108 150 C113 190 112 250 104 312"/><path d="M103 298 C98 252 78 206 44 170 C56 214 70 262 103 298 Z"/><path d="M106 292 C116 240 134 186 158 140 C152 200 132 252 106 292 Z"/></g>
+<g fill="none" stroke="#9C7628" stroke-width="1.8" stroke-linecap="round" opacity=".75"><path d="M122 44 C136 60 141 88 137 114"/><path d="M64 112 C74 128 88 140 100 146"/><path d="M60 200 C74 236 88 266 100 290"/><path d="M146 182 C134 222 120 256 108 284"/></g>
+</symbol>
+<symbol id="tulipLine" viewBox="18 12 160 316"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M108 150 C86 140 86 96 92 66 C96 46 104 30 112 26 C132 28 146 52 148 82 C150 118 134 144 108 150 Z"/><path d="M108 150 C82 150 62 132 56 106 C50 80 50 58 54 44 C70 46 84 58 94 76"/><path d="M74 50 C74 38 80 30 88 30 C95 30 99 38 99 50"/><path d="M88 31 C91 24 99 21 106 27"/><path d="M108 150 C113 190 112 250 104 312"/><path d="M103 298 C98 252 78 206 44 170 C56 214 70 262 103 298 Z"/><path d="M106 292 C116 240 134 186 158 140 C152 200 132 252 106 292 Z"/><path d="M122 44 C136 60 141 88 137 114"/><path d="M64 112 C74 128 88 140 100 146"/><path d="M60 200 C74 236 88 266 100 290"/><path d="M146 182 C134 222 120 256 108 284"/></g></symbol>
+</svg>
+<div class="cover" id="cover" role="button" tabindex="0" aria-label="進入帳本">
+  <div class="cover-frame">
+    <i class="dia t"></i><i class="dia b"></i>
+    <svg class="tulip" viewBox="18 12 160 316" aria-hidden="true"><use href="#tulipArt"/></svg>
+    <div class="en">Consultation Ledger</div>
+    <h1>Penny 金庫</h1>
+    <div class="rule short"><i></i></div>
+    <p class="sub">宣宣諮詢帳本・記下每一份信任與祝福</p>
+    <div class="tap">輕觸進入</div>
+  </div>
+</div>
+<div class="backdrop" aria-hidden="true"><svg class="t1" viewBox="18 12 160 316" aria-hidden="true"><use href="#tulipLine"/></svg><svg class="t2" viewBox="18 12 160 316" aria-hidden="true"><use href="#tulipLine"/></svg></div>
+<div class="app" id="app"><div class="wrap">
+  <header class="crest">
+    <button class="glassbtn ghost settings-btn" id="btnSettings" type="button">項目與定價</button>
+    <svg class="tulip" viewBox="18 12 160 316" aria-hidden="true"><use href="#tulipArt"/></svg>
+    <div class="en">Penny · Ledger</div>
+    <h1>宣宣諮詢帳本</h1>
+    <div class="rule short"><i></i></div>
+    <p class="sub">體驗諮詢・單次諮詢・祈福　一筆一筆記下來</p>
+  </header>
+
+  <div class="monthbar framed">
+    <button class="arrow glassbtn" id="prev" type="button" aria-label="上一期">‹</button>
+    <div>
+      <div class="mlabel" id="mlabel">—</div>
+      <div class="seg" role="group" aria-label="檢視範圍">
+        <button type="button" id="segM" aria-pressed="true">月</button>
+        <button type="button" id="segY" aria-pressed="false">全年</button>
+      </div>
+    </div>
+    <button class="arrow glassbtn" id="next" type="button" aria-label="下一期">›</button>
+  </div>
+
+  <div class="tabs framed" role="tablist" aria-label="切換畫面">
+    <button type="button" role="tab" id="tabBook" aria-selected="true">帳本</button>
+    <button type="button" role="tab" id="tabAdmin" aria-selected="false">後台</button>
+  </div>
+
+  <div id="viewAdmin" hidden>
+    <section>
+      <h2>收入總覽</h2>
+      <div class="admin-sum framed">
+        <div class="big"><span>總收入（已收）</span><b id="aTotal">0</b></div>
+        <div><span>祈福收入</span><b id="aBless">0</b></div>
+        <div><span>諮詢收入</span><b id="aConsult">0</b></div>
+        <div><span>香品成本</span><b id="aCost">0</b></div>
+        <div class="net"><span>淨賺</span><b id="aNet">0</b></div>
+        <div class="owe" id="aOweBox" hidden><span>還沒收</span><b id="aOwe">0</b></div>
+      </div>
+    </section>
+    <section>
+      <h2>香品要準備多少</h2>
+      <div class="rows framed" id="prepRows"></div>
+      <p class="note" id="prepNote"></p>
+    </section>
+    <section>
+      <div class="sess-head"><h2>祈福場次</h2><button type="button" class="glassbtn ghost" id="btnNewSess">＋ 新增場次</button></div>
+      <div id="prepDays"></div>
+    </section>
+  </div>
+
+  <div id="viewBook">
+  <div class="hero">
+    <div class="stat main framed"><svg class="mark" viewBox="18 12 160 316" aria-hidden="true"><use href="#tulipArt"/></svg><div class="k">已收收入</div><div class="v" id="sIncome">0<small>元</small></div></div>
+    <div class="stat framed"><div class="k">接了幾位（人次）</div><div class="v" id="sCount">0<small>位</small></div></div>
+    <div class="stat framed"><div class="k">不同客人</div><div class="v" id="sPeople">0<small>人</small></div></div>
+    <div class="stat owe framed" id="oweBox" hidden><div class="k">還沒收的錢</div><div class="v" id="sOwe">0<small>元</small></div></div>
+    <div class="stat net framed"><div class="k">淨賺（扣掉成本）</div><div class="v" id="sNet">0<small>元</small></div></div>
+    <div class="stat framed" id="avgBox"><div class="k">平均每位</div><div class="v" id="sAvg">0<small>元</small></div></div>
+  </div>
+
+  <section>
+    <h2>各項目</h2>
+    <div class="rows framed" id="itemRows"></div>
+  </section>
+
+  <section id="blessSec" hidden>
+    <h2>祈福淨賺</h2>
+    <div class="rows framed" id="blessRows"></div>
+  </section>
+
+  <section>
+    <h2>紀錄</h2>
+    <div id="list"><div class="empty framed"><b>正在打開帳本…</b>稍等一下，紀錄馬上出現。</div></div>
+  </section>
+  </div>
+  <p class="status" id="status"></p>
+  <div class="foot"><div class="rule short"><i></i></div>wishing you blossom</div>
+</div>
+
+</div>
+<button class="fab glassbtn" id="btnAdd" type="button">＋ 記一筆</button>
+
+<div class="sheet-bg" id="addBg" hidden>
+  <form class="sheet" id="addForm" autocomplete="off">
+    <h2 id="formTitle">記一筆</h2>
+    <div class="tiles" id="fItems"></div>
+    <div class="two">
+      <label>日期<input type="date" id="fDate" required></label>
+      <label>客人暱稱<input type="text" id="fName" placeholder="例如：小雨" maxlength="40"></label>
+    </div>
+    <label>IG 帳號<input type="text" id="fIg" placeholder="例如：@xiaoyu_0808" maxlength="40" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="url"></label>
+    <div id="blessWrap" hidden>
+      <label style="margin-bottom:6px">祈福類別</label>
+      <div class="chips" id="fBless"></div>
+    </div>
+    <div id="sessWrap" hidden>
+      <label style="margin-bottom:6px">排進哪一場祈福</label>
+      <div class="sess-pick"><select id="fSession"></select><button type="button" class="glassbtn ghost" id="fNewSess">＋ 新增場次</button></div>
+    </div>
+    <div class="two">
+      <label>收多少錢（元）<input type="number" id="fAmount" inputmode="numeric" min="0" step="1" required></label>
+      <label>收款狀態
+        <select id="fPaid"><option value="1">已收</option><option value="0">還沒收</option></select>
+      </label>
+    </div>
+    <label id="costWrap">成本（祈福會照材料自動算，也可以自己改）<input type="number" id="fCost" inputmode="numeric" min="0" step="1" placeholder="0"></label>
+    <label>備註（問什麼、從哪裡來…）<input type="text" id="fNote" maxlength="120" placeholder="例如：問復合，IG 來的"></label>
+    <div class="actions">
+      <button type="button" class="secondary" id="fCancel">取消</button>
+      <button type="submit" class="primary glassbtn" id="fSave">儲存</button>
+    </div>
+  </form>
+</div>
+
+<div class="sheet-bg" id="sessBg" hidden>
+  <form class="sheet" id="sessForm" autocomplete="off">
+    <h2 id="sessTitle">新增祈福場次</h2>
+    <div class="two">
+      <label>祈福日期<input type="date" id="sDate" required></label>
+      <label>場次名稱<input type="text" id="sName" maxlength="30" placeholder="例如：初一補財庫"></label>
+    </div>
+    <label>備註<input type="text" id="sNote" maxlength="80" placeholder="例如：晚上 8 點，在家做"></label>
+    <div class="actions">
+      <button type="button" class="secondary" id="sCancel">取消</button>
+      <button type="button" class="secondary danger-btn" id="sDelete" hidden>刪除</button>
+      <button type="submit" class="primary glassbtn" id="sSave">儲存</button>
+    </div>
+  </form>
+</div>
+
+<div class="sheet-bg" id="setBg" hidden>
+  <div class="sheet">
+    <h2>項目與定價</h2>
+    <p class="note">選項目時會自動帶入這裡的定價和成本，記帳時還是可以改。祈福的成本填香、疏文等材料費，就能算出淨賺。</p>
+    <div class="price-head"><span>項目</span><span>定價</span><span>成本</span><span></span></div>
+    <div id="priceList" style="display:flex;flex-direction:column;gap:8px"></div>
+    <div class="price-row">
+      <input type="text" id="newItem" placeholder="新增項目名稱" maxlength="30">
+      <input type="number" id="newPrice" placeholder="定價" min="0" inputmode="numeric">
+      <input type="number" id="newCost" placeholder="成本" min="0" inputmode="numeric">
+      <button type="button" class="glassbtn ghost" id="addItem">加入</button>
+    </div>
+    <label>祈福類別（用頓號、隔開）<input type="text" id="blessInput"></label>
+    <h2 style="margin-top:6px">祈福材料單價</h2>
+    <div class="mat-head"><span>材料</span><span>單位</span><span>單價</span><span></span></div>
+    <div id="matList" style="display:flex;flex-direction:column;gap:8px"></div>
+    <button type="button" class="glassbtn ghost" id="addMat" style="align-self:flex-start">＋ 新增材料</button>
+    <h2 style="margin-top:6px">備份</h2>
+    <p class="note">紀錄存在這支手機裡。建議每個月按一次「匯出備份」存到檔案或傳給自己，換手機時用「匯入備份」就能全部搬過去。</p>
+    <div class="backup-row">
+      <button type="button" class="glassbtn ghost" id="btnExport">匯出備份</button>
+      <label class="glassbtn ghost filebtn">匯入備份<input type="file" id="fileImport" accept=".json,application/json" hidden></label>
+    </div>
+    <p class="note" id="importMsg"></p>
+    <div class="actions">
+      <button type="button" class="secondary" id="setCancel">取消</button>
+      <button type="button" class="primary glassbtn" id="setSave">儲存設定</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+const DEFAULT_SETTINGS={
+  items:[{name:"補財庫",price:900},{name:"迴向",price:900},{name:"除小人",price:900},{name:"神明祝壽",price:900},{name:"代做祈福",price:null},{name:"淨化磁場（煙供）",price:null},{name:"199 體驗諮詢",price:199},{name:"單次諮詢",price:null},{name:"占卜療育",price:null},{name:"陪伴",price:null}],
+  bless:["補財庫","桃花","迴向","除小人","神明祝壽","其他"],
+  presets:{"迴向":{"境淨香":16,"元寶香":3,"疏文捐款":1},"補財庫":{"元寶香":6,"布幣香":3,"疏文捐款":1},"除小人":{"境淨香":16,"元寶香":3,"疏文捐款":1},"神明祝壽":{"元寶香":9,"疏文捐款":1}},
+  materials:[{name:"境淨香",unit:"片",price:14.5},{name:"元寶香",unit:"顆",price:75},{name:"布幣香",unit:"千",price:75},{name:"疏文捐款",unit:"張",price:25}]
+};
+const BLESS_ITEMS=/祈福|淨化|煙供|補財庫|迴向|除小人|神明祝壽/;
+function normSettings(d){d=d||{};const bless=[...(d.bless||DEFAULT_SETTINGS.bless)];
+  ["補財庫","桃花","迴向","除小人","神明祝壽"].slice().reverse().forEach(b=>{if(!bless.includes(b))bless.unshift(b)});
+  const oi=bless.indexOf("其他");if(oi>-1){bless.splice(oi,1);bless.push("其他")}
+  const presets=Object.assign(JSON.parse(JSON.stringify(DEFAULT_SETTINGS.presets)),d.presets||{});
+  const items=JSON.parse(JSON.stringify(d.items||DEFAULT_SETTINGS.items));
+  DEFAULT_SETTINGS.items.filter(i=>presets[i.name]&&!items.some(x=>x.name===i.name)).forEach(i=>{const at=items.findIndex(x=>/祈福/.test(x.name));items.splice(at<0?items.length:at,0,Object.assign({},i))});
+  return {items,bless,presets,materials:(d.materials&&d.materials.length)?d.materials:JSON.parse(JSON.stringify(DEFAULT_SETTINGS.materials))}}
+let settings=JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+let records=[]; let sessions=[]; let db=null, col=null, setRef=null, sessCol=null, localMode=false;
+const now=new Date(); let year=now.getFullYear(), month=now.getMonth()+1, mode="m";
+let editingId=null, pendingDelete=null, loaded=false;
+const $=id=>document.getElementById(id);
+const fmt=n=>(Math.round((+n||0)*10)/10).toLocaleString("zh-TW",{maximumFractionDigits:1});
+const pad=n=>String(n).padStart(2,"0");
+const todayStr=()=>{const d=new Date();return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())};
+
+function toast(t){const el=$("toast");el.textContent=t;el.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>el.hidden=true,1800)}
+
+/* ---------- storage ---------- */
+function lsGet(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+const MY_SETTINGS={"bless": [], "items": [{"cost": 0, "name": "迴向", "price": 900}, {"cost": 0, "name": "補財庫", "price": 900}, {"cost": 0, "name": "除小人", "price": 900}, {"cost": 0, "name": "神明祝壽", "price": 900}, {"cost": 0, "name": "199 體驗諮詢", "price": 199}, {"cost": 0, "name": "單次諮詢", "price": null}, {"cost": 0, "name": "香氛占卜", "price": null}], "materials": [{"name": "境淨香", "price": 14.5, "unit": "片"}, {"name": "元寶香", "price": 75, "unit": "顆"}, {"name": "布幣香", "price": 75, "unit": "千"}, {"name": "疏文+捐款", "price": 26, "unit": "張"}], "presets": {"神明祝壽": {"元寶香": 9, "疏文+捐款": 1}, "補財庫": {"元寶香": 6, "布幣香": 3, "疏文+捐款": 1}, "迴向": {"元寶香": 3, "境淨香": 16, "疏文+捐款": 1}, "除小人": {"元寶香": 3, "境淨香": 16, "疏文+捐款": 1}}};
+const MY_SESSIONS=[{"date": "2026-11-23", "name": "水關大帝祝壽", "note": "", "id": "rpym9r29f2vcpky1y9qv"}];
+async function init(){
+  localMode=true; loaded=true;
+  const first=lsGet("pc_settings")==null;
+  records=lsGet("pc_records")||[]; sessions=lsGet("pc_sessions")||(first?MY_SESSIONS:[]);
+  settings=normSettings(lsGet("pc_settings")||MY_SETTINGS);
+  if(first){lsSet("pc_settings",settings);lsSet("pc_sessions",sessions)}
+  try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
+  render();
+}
+async function saveRecord(rec){
+  if(localMode){
+    if(rec.id){records=records.map(r=>r.id===rec.id?rec:r)}else{rec.id="r"+Date.now();records.push(rec)}
+    records.sort((a,b)=>b.date.localeCompare(a.date)); lsSet("pc_records",records); render(); return;
+  }
+  const {id,...body}=rec;
+  if(id) await col.doc(id).set(body); else await col.add(body);
+}
+async function saveSession(x){
+  if(localMode){if(x.id){sessions=sessions.map(s=>s.id===x.id?x:s)}else{x.id="s"+Date.now();sessions.push(x)}sessions.sort((a,b)=>a.date.localeCompare(b.date));lsSet("pc_sessions",sessions);render();return x.id}
+  const {id,...body}=x;if(id){await sessCol.doc(id).set(body);return id}const ref=sessCol.doc();await ref.set(body);return ref.id;
+}
+async function removeSession(id){
+  if(localMode){sessions=sessions.filter(s=>s.id!==id);lsSet("pc_sessions",sessions);render();return}
+  await sessCol.doc(id).delete();
+}
+async function removeRecord(id){
+  if(localMode){records=records.filter(r=>r.id!==id);lsSet("pc_records",records);render();return}
+  await col.doc(id).delete();
+}
+async function saveSettings(s){
+  settings=s;
+  if(localMode){lsSet("pc_settings",s);render();return}
+  await setRef.set(s);
+}
+
+/* ---------- view ---------- */
+function inRange(r){const p=mode==="m"?year+"-"+pad(month):String(year);return (r.date||"").startsWith(p)}
+let view="book";
+function getMats(r){if(r.mats&&Object.keys(r.mats).length)return r.mats;const p=settings.presets||{};return p[r.item]||p[r.bless]||{}}
+function renderAdmin(list){
+  const paid=list.filter(r=>r.paid!==false),unpaid=list.filter(r=>r.paid===false);
+  const sum=a=>a.reduce((s,r)=>s+(+r.amount||0),0);
+  const bless=list.filter(r=>BLESS_ITEMS.test(r.item||"")),blessPaid=bless.filter(r=>r.paid!==false);
+  const total=sum(paid),bi=sum(blessPaid),cost=paid.reduce((s,r)=>s+(+r.cost||0),0),owe=sum(unpaid);
+  $("aTotal").textContent=fmt(total)+" 元";$("aBless").textContent=fmt(bi);$("aConsult").textContent=fmt(total-bi);
+  $("aCost").textContent=fmt(cost);$("aNet").textContent=fmt(total-cost);$("aOwe").textContent=fmt(owe);$("aOweBox").hidden=owe<=0;
+  // incense totals across every blessing in the period, paid or not, since all of them must be prepared
+  const tot={};bless.forEach(r=>Object.entries(getMats(r)).forEach(([k,v])=>tot[k]=(tot[k]||0)+(+v||0)));
+  const pr=$("prepRows");pr.textContent="";let grand=0;
+  const mats=settings.materials.filter(m=>tot[m.name]>0);
+  Object.keys(tot).filter(k=>!settings.materials.some(m=>m.name===k)&&tot[k]>0).forEach(k=>mats.push({name:k,unit:"",price:0}));
+  if(!mats.length)pr.innerHTML='<div class="none">這段期間還沒有祈福，不用準備香品。</div>';
+  mats.forEach(m=>{const q=tot[m.name],amt=q*(+m.price||0);grand+=amt;const row=document.createElement("div");row.className="row";
+    row.innerHTML=`<div class="n"></div><div class="c">${fmt(q)} ${m.unit}</div><div class="a">${fmt(amt)} 元</div>`;row.querySelector(".n").textContent=m.name;
+    const u=document.createElement("div");u.className="sub2";u.style.color="var(--muted)";u.textContent=`單價 ${fmt(m.price)} 元`;row.querySelector(".n").appendChild(u);pr.appendChild(row)});
+  if(mats.length){const row=document.createElement("div");row.className="row prep-total";row.innerHTML=`<div class="n">香品合計</div><div class="c">${bless.length} 件祈福</div><div class="a">${fmt(grand)} 元</div>`;pr.appendChild(row)}
+  $("prepNote").textContent=bless.length?"包含還沒收錢的祈福，因為一樣要準備香品。":"";
+  // one card per blessing session the user created, plus blessings not yet placed in a session
+  const box=$("prepDays");box.textContent="";
+  const allBless=records.filter(r=>BLESS_ITEMS.test(r.item||""));
+  const inPeriod=x=>{const p=mode==="m"?year+"-"+pad(month):String(year);return (x.date||"").startsWith(p)};
+  const shown=sessions.filter(inPeriod).slice().sort((a,b)=>a.date.localeCompare(b.date));
+  const ids=new Set(sessions.map(x=>x.id));
+  const unsched=bless.filter(r=>!r.sessionId||!ids.has(r.sessionId));
+  if(!shown.length&&!unsched.length){box.innerHTML=`<div class="empty framed"><b>${mode==="m"?"這個月":"今年"}還沒有祈福場次</b>按右上「＋ 新增場次」，設定這次要做祈福的日期。</div>`;return}
+  const card=(title,dateStr,note,rs,sess)=>{
+    const c=document.createElement("div");c.className="dayprep framed"+(sess?"":" unsched");
+    const h=document.createElement("div");h.className="dh";h.textContent=title;const cnt=document.createElement("span");cnt.textContent=`${rs.length} 件`;h.appendChild(cnt);c.appendChild(h);
+    if(dateStr||note){const n=document.createElement("div");n.className="snote";n.textContent=[dateStr,note].filter(Boolean).join("・");c.appendChild(n)}
+    const ul=document.createElement("ul");const tot={};let cost=0,inc=0,owe=0;
+    rs.forEach(r=>{const m=getMats(r);Object.entries(m).forEach(([k,v])=>tot[k]=(tot[k]||0)+(+v||0));
+      cost+=settings.materials.reduce((s2,x)=>s2+(+m[x.name]||0)*(+x.price||0),0);
+      if(r.paid===false)owe+=(+r.amount||0);else inc+=(+r.amount||0);
+      const li=document.createElement("li");const t=document.createElement("span");t.textContent=`${r.name||"（沒填暱稱）"}・${r.item}${r.paid===false?"（還沒收）":""}`;
+      const sm=document.createElement("small");sm.textContent=Object.entries(m).map(([k,v])=>`${k} ${v}`).join("、")||"沒有設定香品";li.append(t,sm);ul.appendChild(li)});
+    if(!rs.length){const li=document.createElement("li");li.innerHTML='<small>還沒有客人排進這一場，記祈福時選這個場次就會出現。</small>';ul.appendChild(li)}
+    c.appendChild(ul);
+    const f=document.createElement("div");f.className="dt";f.textContent="香品要準備："+(Object.entries(tot).map(([k,v])=>{const u=(settings.materials.find(x=>x.name===k)||{}).unit||"";return `${k} ${fmt(v)} ${u}`}).join("、")||"—");c.appendChild(f);
+    const mo=document.createElement("div");mo.className="money";
+    mo.innerHTML=`<div><span>總收入</span><b>${fmt(inc+owe)}</b></div><div><span>香品金額</span><b>${fmt(cost)}</b></div><div class="net"><span>淨賺</span><b>${fmt(inc+owe-cost)}</b></div>`;c.appendChild(mo);
+    if(owe>0){const o=document.createElement("div");o.className="snote";o.style.textAlign="right";o.style.marginTop="6px";o.textContent=`其中還沒收 ${fmt(owe)} 元`;c.appendChild(o)}
+    if(sess){const sx=document.createElement("div");sx.className="sx";const ed=document.createElement("button");ed.type="button";ed.className="mini";ed.textContent="修改場次";ed.onclick=()=>openSess(sess);sx.appendChild(ed);c.appendChild(sx)}
+    box.appendChild(c)};
+  const lab=d=>{const dt=new Date(d+"T00:00");return `${dt.getMonth()+1} 月 ${dt.getDate()} 日 週${"日一二三四五六"[dt.getDay()]}`};
+  shown.forEach(x=>card(x.name||lab(x.date),x.name?lab(x.date):"",x.note||"",allBless.filter(r=>r.sessionId===x.id),x));
+  if(unsched.length)card("還沒排場次","",`${unsched.length} 件祈福還沒決定哪一天做`,unsched,null);
+}
+function render(){
+  $("viewBook").hidden=view!=="book";$("viewAdmin").hidden=view!=="admin";
+  $("tabBook").setAttribute("aria-selected",view==="book");$("tabAdmin").setAttribute("aria-selected",view==="admin");
+  $("btnAdd").hidden=view!=="book";
+  if(view==="admin"){$("mlabel").textContent=mode==="m"?`${year} 年 ${month} 月`:`${year} 年全年`;
+    $("segM").setAttribute("aria-pressed",mode==="m");$("segY").setAttribute("aria-pressed",mode==="y");renderAdmin(records.filter(inRange));return}
+  $("mlabel").textContent=mode==="m"?`${year} 年 ${month} 月`:`${year} 年全年`;
+  $("segM").setAttribute("aria-pressed",mode==="m");$("segY").setAttribute("aria-pressed",mode==="y");
+  const list=records.filter(inRange);
+  const paid=list.filter(r=>r.paid!==false), unpaid=list.filter(r=>r.paid===false);
+  const income=paid.reduce((s,r)=>s+(+r.amount||0),0), owe=unpaid.reduce((s,r)=>s+(+r.amount||0),0);
+  const people=new Set(list.map(r=>(r.name||"").trim()).filter(Boolean)).size;
+  $("sIncome").innerHTML=fmt(income)+"<small>元</small>";
+  $("sCount").innerHTML=list.length+"<small>位</small>";
+  $("sPeople").innerHTML=people+"<small>人</small>";
+  $("sOwe").innerHTML=fmt(owe)+"<small>元</small>"; $("oweBox").hidden=owe<=0;
+  const cost=paid.reduce((s,r)=>s+(+r.cost||0),0);
+  $("sNet").innerHTML=fmt(income-cost)+"<small>元</small>";
+  $("sAvg").innerHTML=fmt(paid.length?income/paid.length:0)+"<small>元</small>"; $("avgBox").hidden=owe>0;
+
+  // items
+  const byItem={}; list.forEach(r=>{const k=r.item||"其他";(byItem[k]=byItem[k]||{c:0,a:0,k:0}).c++; if(r.paid!==false){byItem[k].a+=(+r.amount||0);byItem[k].k+=(+r.cost||0)}});
+  const names=[...settings.items.map(i=>i.name),...Object.keys(byItem).filter(k=>!settings.items.some(i=>i.name===k))];
+  const max=Math.max(1,...Object.values(byItem).map(v=>v.a));
+  const ir=$("itemRows"); ir.textContent="";
+  const used=names.filter(n=>byItem[n]);
+  if(!used.length){ir.innerHTML='<div class="none">這段期間還沒有紀錄。</div>'}
+  used.forEach(n=>{const v=byItem[n];const row=document.createElement("div");row.className="row";
+    row.innerHTML=`<div class="n"></div><div class="c">${v.c} 位</div><div class="a">${fmt(v.a)}</div>`;
+    row.querySelector(".n").textContent=n;
+    if(v.k>0){const t=document.createElement("div");t.className="sub2";t.textContent=`成本 ${fmt(v.k)}・淨賺 ${fmt(v.a-v.k)}`;row.querySelector(".n").appendChild(t)}
+    const b=document.createElement("div");b.className="bar";b.style.width=Math.max(4,v.a/max*100)+"%";row.querySelector(".n").appendChild(b);ir.appendChild(row)});
+
+  // bless
+  const blessList=list.filter(r=>r.bless||BLESS_ITEMS.test(r.item||""));
+  const byB={}; blessList.forEach(r=>{const k=r.bless||"未分類";(byB[k]=byB[k]||{c:0,a:0,k:0}).c++; if(r.paid!==false){byB[k].a+=(+r.amount||0);byB[k].k+=(+r.cost||0)}});
+  const br=$("blessRows"); br.textContent=""; $("blessSec").hidden=!blessList.length;
+  if(blessList.length){const bi=blessList.filter(r=>r.paid!==false).reduce((s,r)=>s+(+r.amount||0),0),bc=blessList.filter(r=>r.paid!==false).reduce((s,r)=>s+(+r.cost||0),0);
+    const sum=document.createElement("div");sum.className="bless-sum";
+    sum.innerHTML=`<div><div class="k">祈福收入</div><div class="v">${fmt(bi)}</div></div><div><div class="k">成本</div><div class="v">${fmt(bc)}</div></div><div><div class="k">淨賺</div><div class="v net">${fmt(bi-bc)}</div></div>`;br.appendChild(sum)}
+  Object.entries(byB).sort((a,b)=>b[1].c-a[1].c).forEach(([k,v])=>{const row=document.createElement("div");row.className="row";
+    row.innerHTML=`<div class="n"></div><div class="c">${v.c} 件</div><div class="a">${fmt(v.a-v.k)}</div>`;row.querySelector(".n").textContent=k;
+    const t=document.createElement("div");t.className="sub2";t.textContent=v.k>0?`收入 ${fmt(v.a)}・成本 ${fmt(v.k)}`:"淨賺";row.querySelector(".n").appendChild(t);br.appendChild(row)});
+
+  // list
+  const L=$("list"); L.textContent="";
+  if(!loaded){L.innerHTML='<div class="empty framed"><b>正在打開帳本…</b>稍等一下，紀錄馬上出現。</div>';return}
+  if(!list.length){L.innerHTML=`<div class="empty framed"><svg class="tulip" viewBox="18 12 160 316" aria-hidden="true"><use href="#tulipArt"/></svg><b>${mode==="m"?"這個月":"今年"}還沒有紀錄</b>按下方「＋ 記一筆」，記下第一位客人。</div>`;return}
+  let lastDay="";
+  list.forEach(r=>{
+    if(r.date!==lastDay){lastDay=r.date;const d=document.createElement("div");d.className="day";
+      const dt=new Date(r.date+"T00:00");d.textContent=`${dt.getMonth()+1} 月 ${dt.getDate()} 日 週${"日一二三四五六"[dt.getDay()]}`;L.appendChild(d)}
+    const e=document.createElement("div");e.className="entry framed";
+    e.innerHTML=`<div class="who"></div><div class="amt">${fmt(r.amount)} 元</div><div class="meta"></div><div class="acts"></div>`;
+    e.querySelector(".who").textContent=r.name||"（沒填暱稱）";
+    if(r.ig){const a=document.createElement("a");a.className="ig";a.href="https://www.instagram.com/"+encodeURIComponent(r.ig.replace(/^@/,""))+"/";a.target="_blank";a.rel="noopener";a.textContent=r.ig;e.querySelector(".who").appendChild(a)}
+    const meta=e.querySelector(".meta"); meta.textContent=r.item||""; if(r.sessionId){const sx=sessions.find(x=>x.id===r.sessionId);if(sx){const t=document.createElement("span");t.className="pill tag";t.style.marginLeft="6px";t.textContent=sessLabel(sx);meta.appendChild(t)}}
+    if(r.bless){const t=document.createElement("span");t.className="pill tag";t.style.marginLeft="6px";t.textContent=r.bless;meta.appendChild(t)}
+    if(r.mats&&Object.keys(r.mats).length){const mm=document.createElement("div");mm.textContent=Object.entries(r.mats).map(([k,v])=>`${k}×${v}`).join("、");meta.appendChild(mm)}
+    if(+r.cost>0){const c=document.createElement("div");c.textContent=`成本 ${fmt(r.cost)}・淨賺 ${fmt((+r.amount||0)-(+r.cost||0))} 元`;meta.appendChild(c)}
+    if(r.note){const n=document.createElement("div");n.textContent=r.note;meta.appendChild(n)}
+    const acts=e.querySelector(".acts");
+    const p=document.createElement("button");p.type="button";p.className="pill "+(r.paid===false?"unpaid":"paid");
+    p.textContent=r.paid===false?"還沒收・點一下改已收":"已收";p.title="切換收款狀態";
+    p.onclick=async()=>{try{await saveRecord(Object.assign({},r,{paid:r.paid===false}));toast(r.paid===false?"改成已收":"改成還沒收")}catch(err){toast("沒存成功，請再試一次")}};
+    acts.appendChild(p);
+    const ed=document.createElement("button");ed.type="button";ed.className="mini";ed.textContent="修改";ed.onclick=()=>openForm(r);acts.appendChild(ed);
+    const del=document.createElement("button");del.type="button";del.className="mini danger";
+    del.textContent=pendingDelete===r.id?"確定刪除？":"刪除";
+    del.onclick=async()=>{if(pendingDelete!==r.id){pendingDelete=r.id;render();setTimeout(()=>{if(pendingDelete===r.id){pendingDelete=null;render()}},4000);return}
+      pendingDelete=null;try{await removeRecord(r.id);toast("已刪除")}catch(err){toast("刪除失敗，請再試一次")}};
+    acts.appendChild(del);
+    L.appendChild(e);
+  });
+}
+
+/* ---------- form ---------- */
+let fItem="", fBless="", matQty={};
+function matCost(){return Math.round(settings.materials.reduce((s,m)=>s+(+matQty[m.name]||0)*(+m.price||0),0)*10)/10}
+function drawMats(){
+  const box=$("mats");box.textContent="";
+  settings.materials.forEach((m,i)=>{const row=document.createElement("div");row.className="mat-row";
+    row.innerHTML=`<div class="mn"></div><div class="stepper"><button type="button" aria-label="減少">−</button><input type="number" id="mq${i}" min="0" step="1" inputmode="numeric"><button type="button" aria-label="增加">＋</button></div><div class="ms"></div>`;
+    row.querySelector(".mn").textContent=`${m.name}`;const u=document.createElement("small");u.textContent=`${fmt(m.price)} 元／${m.unit}`;row.querySelector(".mn").appendChild(u);
+    const inp=row.querySelector("input"),ms=row.querySelector(".ms");inp.value=matQty[m.name]||"";
+    const upd=(init)=>{const q=+matQty[m.name]||0;ms.textContent=q?fmt(q*m.price):"—";$("matSum").textContent=`材料成本合計 ${fmt(matCost())} 元`;if(init!==true)drawCard()};
+    inp.oninput=()=>{matQty[m.name]=Math.max(0,Math.floor(+inp.value||0));upd()};
+    const [dn,up]=row.querySelectorAll("button");dn.onclick=()=>{matQty[m.name]=Math.max(0,(+matQty[m.name]||0)-1);inp.value=matQty[m.name]||"";upd()};
+    up.onclick=()=>{matQty[m.name]=(+matQty[m.name]||0)+1;inp.value=matQty[m.name];upd()};
+    upd(true);box.appendChild(row)});
+  $("matSum").textContent=`材料成本合計 ${fmt(matCost())} 元`;
+}
+function chips(el,opts,cur,on){el.textContent="";opts.forEach(o=>{const b=document.createElement("button");b.type="button";b.textContent=o;b.setAttribute("aria-pressed",o===cur);b.onclick=()=>on(o);el.appendChild(b)})}
+const isBless=n=>BLESS_ITEMS.test(n||"");
+const hasPreset=n=>!!(settings.presets&&settings.presets[n]);
+function drawCard(){
+  // refresh the open row's totals and keep the saved cost in step with the quantities
+  syncSessWrap();
+  if(!isBless(fItem))return;
+  const touched=Object.keys(matQty).length>0,cost=touched?matCost():(+$("fCost").value||0),amt=+$("fAmount").value||0;
+  if(touched)$("fCost").value=cost||"";
+  const c=document.getElementById("icCost");if(!c)return;
+  c.textContent=fmt(cost);$("icAmt").textContent=fmt(amt);$("icNet").textContent=fmt(amt-cost);
+}
+function pickItem(o){
+  if(o===fItem){fItem="";drawPicker();return}
+  fItem=o;const it=settings.items.find(i=>i.name===o);
+  if(it&&it.price!=null&&it.price!=="")$("fAmount").value=it.price;
+  if(hasPreset(o)){matQty=Object.assign({},settings.presets[o]);fBless=settings.bless.includes(o)?o:""}
+  else if(isBless(o)){matQty={};fBless="";$("fCost").value=""}
+  else{matQty={};fBless="";$("fCost").value=it&&it.cost?it.cost:""}
+  drawPicker();
+}
+function drawPicker(){
+  const host=$("fItems");host.textContent="";
+  const groups=[["祈福",settings.items.filter(i=>isBless(i.name))],["諮詢",settings.items.filter(i=>!isBless(i.name))]];
+  groups.forEach(([label,list])=>{if(!list.length)return;
+    const g=document.createElement("div");g.className="tile-group";g.textContent=label;host.appendChild(g);
+    const row=document.createElement("div");row.className="tile-row";
+    list.forEach(it=>{const t=document.createElement("button");t.type="button";t.className="tile";t.setAttribute("aria-pressed",it.name===fItem);
+      t.innerHTML='<span class="tn"></span><span class="tp"></span>';t.querySelector(".tn").textContent=it.name;
+      t.querySelector(".tp").textContent=it.price!=null&&it.price!==""?`${fmt(it.price)} 元`:"自訂金額";
+      t.onclick=()=>pickItem(it.name);row.appendChild(t)});
+    host.appendChild(row)});
+  // one detail panel for the chosen item only
+  if(fItem){const d=document.createElement("div");d.className="detail";
+    const it=settings.items.find(i=>i.name===fItem)||{};
+    if(isBless(fItem)){d.innerHTML='<div class="dn"><span></span><small>成本照香品自動算</small></div><div id="mats"></div><div class="mats-total" id="matSum"></div><div class="acc-sum"><div><span>成本</span><b id="icCost">0</b></div><div><span>收費</span><b id="icAmt">0</b></div><div class="net"><span>淨賺</span><b id="icNet">0</b></div></div>'}
+    else{d.innerHTML='<div class="dn"><span></span><small>諮詢沒有材料成本</small></div>'}
+    d.querySelector(".dn span").textContent=fItem;host.appendChild(d)}
+  const sel=host.querySelector('.tile[aria-pressed="true"]');if(sel)sel.scrollIntoView({block:"nearest",inline:"nearest"});
+  const bless=isBless(fItem);$("costWrap").hidden=bless;
+  if(bless){drawMats();drawCard()}else syncSessWrap();
+  const showCat=bless&&!hasPreset(fItem);$("blessWrap").hidden=!showCat;
+  chips($("fBless"),settings.bless,fBless,o=>{fBless=fBless===o?"":o;
+    const pr=fBless&&settings.presets&&settings.presets[fBless];if(pr)matQty=Object.assign({},pr);drawPicker()});
+}
+const drawChips=drawPicker;
+$("fAmount").addEventListener("input",()=>{if(isBless(fItem))drawCard()});
+function sessLabel(x){const dt=new Date(x.date+"T00:00");return `${dt.getMonth()+1}/${dt.getDate()}（週${"日一二三四五六"[dt.getDay()]}）${x.name?" "+x.name:""}`}
+function fillSessions(sel){const el=$("fSession");el.textContent="";
+  const o0=document.createElement("option");o0.value="";o0.textContent="還沒排場次";el.appendChild(o0);
+  const today=todayStr();const list=sessions.slice().sort((a,b)=>a.date.localeCompare(b.date));
+  list.filter(x=>x.date>=today||x.id===sel).forEach(x=>{const o=document.createElement("option");o.value=x.id;o.textContent=sessLabel(x);el.appendChild(o)});
+  const past=list.filter(x=>x.date<today&&x.id!==sel);if(past.length){const g=document.createElement("optgroup");g.label="已經過的場次";past.reverse().forEach(x=>{const o=document.createElement("option");o.value=x.id;o.textContent=sessLabel(x);g.appendChild(o)});el.appendChild(g)}
+  el.value=sel&&[...el.options].some(o=>o.value===sel)?sel:"";
+}
+function syncSessWrap(){$("sessWrap").hidden=!isBless(fItem)}
+let editingSess=null,sessFromForm=false;
+function openSess(x,fromForm){editingSess=x||null;sessFromForm=!!fromForm;$("sessTitle").textContent=x?"修改祈福場次":"新增祈福場次";
+  $("sDate").value=x?x.date:todayStr();$("sName").value=x?x.name||"":"";$("sNote").value=x?x.note||"":"";$("sDelete").hidden=!x;$("sDelete").textContent="刪除";$("sessBg").hidden=false}
+$("btnNewSess").onclick=()=>openSess(null,false);
+$("fNewSess").onclick=()=>openSess(null,true);
+$("sCancel").onclick=()=>$("sessBg").hidden=true;
+$("sessBg").onclick=e=>{if(e.target.id==="sessBg")$("sessBg").hidden=true};
+$("sDelete").onclick=async()=>{if(!editingSess)return;const b=$("sDelete");if(b.textContent!=="確定刪除？"){b.textContent="確定刪除？";return}
+  try{await removeSession(editingSess.id);$("sessBg").hidden=true;toast("場次已刪除，裡面的祈福會回到「還沒排場次」")}catch(e){toast("刪除失敗，請再試一次")}};
+$("sessForm").addEventListener("submit",async e=>{e.preventDefault();
+  const x={date:$("sDate").value,name:$("sName").value.trim(),note:$("sNote").value.trim()};if(editingSess)x.id=editingSess.id;
+  $("sSave").disabled=true;try{const id=await saveSession(x);$("sessBg").hidden=true;toast(editingSess?"場次已修改":"場次加好了");
+    if(sessFromForm){fillSessions(id);$("fSession").value=id}}catch(err){toast("沒存成功，請再試一次")}finally{$("sSave").disabled=false}});
+function openForm(r){
+  editingId=r?r.id:null; $("formTitle").textContent=r?"修改紀錄":"記一筆";
+  $("fDate").value=r?r.date:(mode==="m"&&(year!==now.getFullYear()||month!==now.getMonth()+1)?`${year}-${pad(month)}-01`:todayStr());
+  $("fName").value=r?r.name||"":""; $("fIg").value=r?r.ig||"":""; $("fPaid").value=r&&r.paid===false?"0":"1"; $("fNote").value=r?r.note||"":"";
+  if(r){fItem=r.item||"";fBless=r.bless||"";matQty=r.mats?Object.assign({},r.mats):{};$("fAmount").value=r.amount;$("fCost").value=r.cost?r.cost:""}
+  else{fItem="";fBless="";matQty={};$("fAmount").value="";$("fCost").value=""}
+  drawPicker();fillSessions(r?r.sessionId||"":(()=>{const t=todayStr();const n=sessions.slice().sort((a,b)=>a.date.localeCompare(b.date)).find(x=>x.date>=t);return n?n.id:""})());syncSessWrap();$("addBg").hidden=false;
+}
+$("btnAdd").onclick=()=>openForm(null);
+$("fCancel").onclick=()=>$("addBg").hidden=true;
+$("addBg").onclick=e=>{if(e.target.id==="addBg")$("addBg").hidden=true};
+$("addForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  if(!fItem){toast("請先選一個項目");return}
+  const rec={date:$("fDate").value,name:$("fName").value.trim(),ig:(()=>{const v=$("fIg").value.trim().replace(/^https?:\/\/(www\.)?instagram\.com\//i,"").replace(/[/?].*$/,"").replace(/^@+/,"");return v?"@"+v:""})(),item:fItem,bless:fBless||"",amount:Math.max(0,Math.round(+$("fAmount").value||0)),cost:Math.max(0,Math.round((+$("fCost").value||0)*10)/10),mats:BLESS_ITEMS.test(fItem)?Object.fromEntries(Object.entries(matQty).filter(([k,v])=>+v>0)):{},paid:$("fPaid").value==="1",sessionId:BLESS_ITEMS.test(fItem)?$("fSession").value:"",note:$("fNote").value.trim(),updatedAt:new Date().toISOString()};
+  if(editingId)rec.id=editingId;
+  $("fSave").disabled=true;
+  try{await saveRecord(rec);$("addBg").hidden=true;toast(editingId?"已修改":"記好了");
+    const [y,m]=rec.date.split("-").map(Number); if(y!==year||(mode==="m"&&m!==month)){year=y;month=m;render()}}
+  catch(err){toast(err&&err.code==="quota_exceeded"?"帳本滿了，請先刪掉一些舊紀錄":"沒存成功，請再試一次")}
+  finally{$("fSave").disabled=false}
+});
+
+/* ---------- settings ---------- */
+let draft=null;
+function drawPrices(){
+  const pl=$("priceList"); pl.textContent="";
+  draft.items.forEach((it,i)=>{const row=document.createElement("div");row.className="price-row";
+    row.innerHTML=`<input type="text" id="pn${i}" maxlength="30"><input type="number" id="pp${i}" min="0" inputmode="numeric" placeholder="自己填"><input type="number" id="pc${i}" min="0" inputmode="numeric" placeholder="0"><button type="button" class="mini danger">移除</button>`;
+    row.children[0].value=it.name; row.children[1].value=it.price==null?"":it.price; row.children[2].value=it.cost?it.cost:"";
+    row.children[0].oninput=e=>it.name=e.target.value; row.children[1].oninput=e=>it.price=e.target.value===""?null:+e.target.value;
+    row.children[2].oninput=e=>it.cost=e.target.value===""?0:+e.target.value;
+    row.children[3].onclick=()=>{draft.items.splice(i,1);drawPrices()}; pl.appendChild(row)});
+}
+function drawMatList(){const ml=$("matList");ml.textContent="";
+  draft.materials.forEach((m,i)=>{const row=document.createElement("div");row.className="mat-edit";
+    row.innerHTML=`<input type="text" id="mn${i}" maxlength="20"><input type="text" id="mu${i}" maxlength="4"><input type="number" id="mp${i}" min="0" step="0.5" inputmode="decimal"><button type="button" class="mini danger">移除</button>`;
+    const [n,u,pr]=row.querySelectorAll("input");n.value=m.name;u.value=m.unit;pr.value=m.price;
+    n.oninput=e=>m.name=e.target.value;u.oninput=e=>m.unit=e.target.value;pr.oninput=e=>m.price=+e.target.value||0;
+    row.querySelector("button").onclick=()=>{draft.materials.splice(i,1);drawMatList()};ml.appendChild(row)})}
+$("addMat").onclick=()=>{draft.materials.push({name:"",unit:"個",price:0});drawMatList()};
+$("btnSettings").onclick=()=>{draft=JSON.parse(JSON.stringify(settings));drawPrices();drawMatList();$("blessInput").value=draft.bless.join("、");$("setBg").hidden=false};
+$("addItem").onclick=()=>{const n=$("newItem").value.trim();if(!n)return;const p=$("newPrice").value,c=$("newCost").value;draft.items.push({name:n,price:p===""?null:+p,cost:c===""?0:+c});$("newItem").value="";$("newPrice").value="";$("newCost").value="";drawPrices()};
+$("setCancel").onclick=()=>$("setBg").hidden=true;
+$("setBg").onclick=e=>{if(e.target.id==="setBg")$("setBg").hidden=true};
+$("setSave").onclick=async()=>{
+  draft.items=draft.items.filter(i=>i.name&&i.name.trim()).map(i=>({name:i.name.trim(),price:i.price,cost:+i.cost||0}));
+  draft.materials=draft.materials.filter(m=>m.name&&m.name.trim()).map(m=>({name:m.name.trim(),unit:(m.unit||"個").trim(),price:+m.price||0}));
+  draft.bless=$("blessInput").value.split(/[、,，\s]+/).map(s=>s.trim()).filter(Boolean);
+  try{await saveSettings(draft);$("setBg").hidden=true;toast("設定存好了")}catch(e){toast("沒存成功，請再試一次")}
+};
+
+/* ---------- period nav ---------- */
+$("prev").onclick=()=>{if(mode==="y")year--;else if(--month<1){month=12;year--}render()};
+$("next").onclick=()=>{if(mode==="y")year++;else if(++month>12){month=1;year++}render()};
+$("tabBook").onclick=()=>{view="book";render()};$("tabAdmin").onclick=()=>{view="admin";render()};
+$("segM").onclick=()=>{mode="m";render()}; $("segY").onclick=()=>{mode="y";render()};
+
+const cover=$("cover");let coverGone=false;
+function hideCover(){if(coverGone)return;coverGone=true;cover.classList.add("out");setTimeout(()=>cover.hidden=true,700)}
+cover.addEventListener("click",hideCover);cover.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();hideCover()}});
+setTimeout(hideCover,2200);
+
+/* ---------- backup ---------- */
+$("btnExport").onclick=()=>{
+  const data={app:"penny-ledger",version:2,exportedAt:new Date().toISOString(),records,sessions,settings};
+  const blob=new Blob([JSON.stringify(data,null,1)],{type:"application/json"});
+  const d=new Date(),name=`Penny金庫備份-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}.json`;
+  const file=new File([blob],name,{type:"application/json"});
+  if(navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:name}).catch(()=>{});return}
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);
+};
+$("fileImport").onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;
+  try{const d=JSON.parse(await f.text());if(!Array.isArray(d.records))throw 0;
+    const ids=new Set(records.map(r=>r.id));let n=0;
+    d.records.forEach(r=>{if(r&&r.date&&!ids.has(r.id)){records.push(r);n++}});
+    records.sort((a,b)=>b.date.localeCompare(a.date));lsSet("pc_records",records);
+    if(Array.isArray(d.sessions)){const si=new Set(sessions.map(x=>x.id));d.sessions.forEach(x=>{if(x&&x.date&&!si.has(x.id))sessions.push(x)});sessions.sort((a,b)=>a.date.localeCompare(b.date));lsSet("pc_sessions",sessions)}
+    if(d.settings){settings=normSettings(d.settings);lsSet("pc_settings",settings)}
+    $("importMsg").textContent=`匯入完成，新增 ${n} 筆紀錄。`;render();toast("備份匯入好了")}
+  catch(err){$("importMsg").textContent="這個檔案不是 Penny 金庫的備份，請換一個。"}
+  e.target.value="";
+};
+render(); init();
+})();
+</script>
+
+</body>
+</html>
