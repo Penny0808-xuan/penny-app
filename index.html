@@ -10,6 +10,9 @@
 <meta name="theme-color" content="#FCFBF8">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="apple-touch-icon.png">
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,-apple-system,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>Penny 金庫</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -256,6 +259,13 @@ button,.acc-head,.chips button{touch-action:manipulation;-webkit-user-select:non
 .dayprep li small{color:var(--muted);font-size:12px}
 .dayprep .dt{margin-top:8px;font-size:13px;color:var(--gold-deep);text-align:right}
 .backup-row{display:flex;gap:10px;flex-wrap:wrap}.filebtn{display:inline-flex;align-items:center;cursor:pointer;color:var(--gold-deep)}
+.login-bg{position:fixed;inset:0;z-index:35;background:radial-gradient(ellipse at 50% 30%,var(--solid),var(--bg) 75%);display:flex;align-items:center;justify-content:center;padding:24px max(20px,env(safe-area-inset-left,0px))}
+.login{width:min(360px,100%);border:1px solid var(--gold-line);border-radius:24px;background:var(--surface);padding:28px 22px;display:flex;flex-direction:column;gap:14px;text-align:center;box-shadow:var(--shadow)}
+.login .tulip{width:56px;height:auto;margin:0 auto}
+.login .en{font-family:var(--latin);font-style:italic;letter-spacing:.24em;color:var(--gold);font-size:13px;text-transform:uppercase}
+.login h1{font-size:24px}
+.login label{text-align:left}
+.login .primary{flex:none}
 </style>
 </head>
 <body>
@@ -423,6 +433,19 @@ button,.acc-head,.chips button{touch-action:manipulation;-webkit-user-select:non
   </form>
 </div>
 
+<div class="login-bg" id="loginBg" hidden>
+  <form class="login" id="loginForm" autocomplete="on">
+    <svg class="tulip" viewBox="18 12 160 316" aria-hidden="true"><use href="#tulipArt"/></svg>
+    <div class="en">Penny · Ledger</div>
+    <h1>Penny 金庫</h1>
+    <label>Email<input type="email" id="lEmail" autocomplete="username" required></label>
+    <label>密碼<input type="password" id="lPass" autocomplete="current-password" required minlength="6"></label>
+    <button type="submit" class="primary glassbtn" id="btnLogin">登入</button>
+    <p class="note" id="loginMsg"></p>
+    <p class="note">用你在 Firebase 建立的 email 和密碼登入，手機和電腦都用同一組。</p>
+  </form>
+</div>
+
 <div class="sheet-bg" id="setBg" hidden>
   <div class="sheet">
     <h2>項目與定價</h2>
@@ -440,11 +463,12 @@ button,.acc-head,.chips button{touch-action:manipulation;-webkit-user-select:non
     <div class="mat-head"><span>材料</span><span>單位</span><span>單價</span><span></span></div>
     <div id="matList" style="display:flex;flex-direction:column;gap:8px"></div>
     <button type="button" class="glassbtn ghost" id="addMat" style="align-self:flex-start">＋ 新增材料</button>
-    <h2 style="margin-top:6px">備份</h2>
-    <p class="note">紀錄存在這支手機裡。建議每個月按一次「匯出備份」存到檔案或傳給自己，換手機時用「匯入備份」就能全部搬過去。</p>
+    <h2 style="margin-top:6px">帳號與備份</h2>
+    <p class="note">目前登入：<b id="acctEmail"></b>。紀錄會自動同步到雲端，手機和電腦都看得到。也可以匯出一份備份留著。</p>
     <div class="backup-row">
       <button type="button" class="glassbtn ghost" id="btnExport">匯出備份</button>
       <label class="glassbtn ghost filebtn">匯入備份<input type="file" id="fileImport" accept=".json,application/json" hidden></label>
+      <button type="button" class="glassbtn ghost" id="btnLogout">登出</button>
     </div>
     <p class="note" id="importMsg"></p>
     <div class="actions">
@@ -486,16 +510,39 @@ function toast(t){const el=$("toast");el.textContent=t;el.hidden=false;clearTime
 /* ---------- storage ---------- */
 function lsGet(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+const FB_CONFIG={"apiKey": "AIzaSyBTGlylk7KWvCTph--5Uc2CtaCjmj3xbNs", "authDomain": "penny-app-9539a.firebaseapp.com", "projectId": "penny-app-9539a", "storageBucket": "penny-app-9539a.firebasestorage.app", "messagingSenderId": "504153464252", "appId": "1:504153464252:web:6c8e50d4b005bf65d3dfb9"};
 const MY_SETTINGS={"bless": [], "items": [{"cost": 0, "name": "迴向", "price": 900}, {"cost": 0, "name": "補財庫", "price": 900}, {"cost": 0, "name": "除小人", "price": 900}, {"cost": 0, "name": "神明祝壽", "price": 900}, {"cost": 0, "name": "199 體驗諮詢", "price": 199}, {"cost": 0, "name": "單次諮詢", "price": null}, {"cost": 0, "name": "香氛占卜", "price": null}], "materials": [{"name": "境淨香", "price": 14.5, "unit": "片"}, {"name": "元寶香", "price": 75, "unit": "顆"}, {"name": "布幣香", "price": 75, "unit": "千"}, {"name": "疏文+捐款", "price": 26, "unit": "張"}], "presets": {"神明祝壽": {"元寶香": 9, "疏文+捐款": 1}, "補財庫": {"元寶香": 6, "布幣香": 3, "疏文+捐款": 1}, "迴向": {"元寶香": 3, "境淨香": 16, "疏文+捐款": 1}, "除小人": {"元寶香": 3, "境淨香": 16, "疏文+捐款": 1}}};
 const MY_SESSIONS=[{"date": "2026-11-23", "name": "水關大帝祝壽", "note": "", "id": "rpym9r29f2vcpky1y9qv"}];
+let fbAuth=null,fbStore=null,unsubs=[];
+function showLogin(msg){$("loginBg").hidden=false;$("loginMsg").textContent=msg||"";$("btnLogin").disabled=false}
 async function init(){
-  localMode=true; loaded=true;
-  const first=lsGet("pc_settings")==null;
-  records=lsGet("pc_records")||[]; sessions=lsGet("pc_sessions")||(first?MY_SESSIONS:[]);
-  settings=normSettings(lsGet("pc_settings")||MY_SETTINGS);
-  if(first){lsSet("pc_settings",settings);lsSet("pc_sessions",sessions)}
-  try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
-  render();
+  if(!window.firebase){$("status").textContent="連不上雲端，請確認網路後重新打開。";showLogin("連不上雲端，請確認網路後重新打開。");return}
+  firebase.initializeApp(FB_CONFIG);fbAuth=firebase.auth();fbStore=firebase.firestore();
+  try{await fbStore.enablePersistence({synchronizeTabs:true})}catch(e){}
+  fbAuth.onAuthStateChanged(u=>{unsubs.forEach(f=>{try{f()}catch(e){}});unsubs=[];
+    if(!u){records=[];sessions=[];loaded=false;render();showLogin("");return}
+    $("loginBg").hidden=true;$("acctEmail").textContent=u.email||"";startSync(u.uid)});
+}
+function startSync(uid){
+  const root=fbStore.collection("users").doc(uid);
+  db={collection:n=>root.collection(n),doc:p=>{const [c,d]=p.split("/");return root.collection(c).doc(d)}};
+  col=db.collection("records"); setRef=db.doc("config/settings"); sessCol=db.collection("sessions"); localMode=false;
+  let timer=setTimeout(()=>{$("status").textContent="雲端連線比較慢，資料可能還沒更新。"},10000);
+  unsubs.push(setRef.onSnapshot(async sn=>{
+    if(sn.exists){settings=normSettings(sn.data());render();return}
+    if(sn.metadata.fromCache)return;
+    // first sign-in: put her saved setup and sessions into the cloud, plus anything recorded on this device before sync
+    try{settings=normSettings(lsGet("pc_settings")||MY_SETTINGS);await setRef.set(JSON.parse(JSON.stringify(settings)));
+      const ss=(lsGet("pc_sessions")||MY_SESSIONS);for(const x of ss){const {id,...body}=x;await sessCol.doc(id).set(body)}
+      const rs=lsGet("pc_records")||[];for(const r of rs){const {id,...body}=r;await col.doc(id).set(body)}
+      toast("帳本已搬到雲端")}catch(e){}
+  },()=>{}));
+  unsubs.push(sessCol.orderBy("date","asc").limit(500).onSnapshot(sn=>{sessions=sn.docs.map(d=>Object.assign({id:d.id},d.data()));render();if(!$("addBg").hidden)fillSessions($("fSession").value)},()=>{}));
+  unsubs.push(col.orderBy("date","desc").limit(1000).onSnapshot(snap=>{
+    loaded=true; records=snap.docs.map(d=>Object.assign({id:d.id},d.data()));
+    if(!snap.metadata.fromCache){clearTimeout(timer);$("status").textContent="已同步到雲端"}
+    render();
+  },e=>{clearTimeout(timer);loaded=true;$("status").textContent="暫時讀不到雲端帳本，請重新打開。";render()}));
 }
 async function saveRecord(rec){
   if(localMode){
@@ -799,7 +846,13 @@ function hideCover(){if(coverGone)return;coverGone=true;cover.classList.add("out
 cover.addEventListener("click",hideCover);cover.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();hideCover()}});
 setTimeout(hideCover,2200);
 
-/* ---------- backup ---------- */
+/* ---------- login, backup ---------- */
+$("loginForm").addEventListener("submit",async e=>{e.preventDefault();if(!fbAuth)return;$("btnLogin").disabled=true;$("loginMsg").textContent="登入中…";
+  try{await fbAuth.signInWithEmailAndPassword($("lEmail").value.trim(),$("lPass").value)}
+  catch(err){const c=err&&err.code||"";$("btnLogin").disabled=false;
+    $("loginMsg").textContent=/invalid-credential|wrong-password|user-not-found|invalid-email/.test(c)?"Email 或密碼不對，請再試一次。":/too-many/.test(c)?"嘗試太多次，請等幾分鐘再登入。":/network/.test(c)?"網路連不上，請確認後再試。":/api-key|unauthorized-domain/.test(c)?"雲端設定還沒完成，請截圖給 Claude："+c:"登入失敗："+c}});
+$("btnLogout").onclick=async()=>{const b=$("btnLogout");if(b.textContent!=="確定登出？"){b.textContent="確定登出？";setTimeout(()=>b.textContent="登出",4000);return}
+  $("setBg").hidden=true;try{await fbAuth.signOut()}catch(e){}};
 $("btnExport").onclick=()=>{
   const data={app:"penny-ledger",version:2,exportedAt:new Date().toISOString(),records,sessions,settings};
   const blob=new Blob([JSON.stringify(data,null,1)],{type:"application/json"});
@@ -812,12 +865,11 @@ $("fileImport").onchange=async e=>{
   const f=e.target.files[0];if(!f)return;
   try{const d=JSON.parse(await f.text());if(!Array.isArray(d.records))throw 0;
     const ids=new Set(records.map(r=>r.id));let n=0;
-    d.records.forEach(r=>{if(r&&r.date&&!ids.has(r.id)){records.push(r);n++}});
-    records.sort((a,b)=>b.date.localeCompare(a.date));lsSet("pc_records",records);
-    if(Array.isArray(d.sessions)){const si=new Set(sessions.map(x=>x.id));d.sessions.forEach(x=>{if(x&&x.date&&!si.has(x.id))sessions.push(x)});sessions.sort((a,b)=>a.date.localeCompare(b.date));lsSet("pc_sessions",sessions)}
-    if(d.settings){settings=normSettings(d.settings);lsSet("pc_settings",settings)}
-    $("importMsg").textContent=`匯入完成，新增 ${n} 筆紀錄。`;render();toast("備份匯入好了")}
-  catch(err){$("importMsg").textContent="這個檔案不是 Penny 金庫的備份，請換一個。"}
+    for(const r of d.records){if(r&&r.date&&!ids.has(r.id)){const {id,...body}=r;await (id?col.doc(id):col.doc()).set(body);n++}}
+    if(Array.isArray(d.sessions)){const si=new Set(sessions.map(x=>x.id));for(const x of d.sessions){if(x&&x.date&&!si.has(x.id)){const {id,...body}=x;await sessCol.doc(id).set(body)}}}
+    if(d.settings){await setRef.set(JSON.parse(JSON.stringify(normSettings(d.settings))))}
+    $("importMsg").textContent=`匯入完成，新增 ${n} 筆紀錄。`;toast("備份匯入好了")}
+  catch(err){$("importMsg").textContent="這個檔案不是 Penny 金庫的備份，或沒有存成功，請再試一次。"}
   e.target.value="";
 };
 render(); init();
