@@ -224,7 +224,7 @@ html,body{height:100%;overflow:hidden;overscroll-behavior:none}
 .app{position:relative;height:100%;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 .sheet{overscroll-behavior:contain}
 button,.acc-head,.chips button{touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
-.tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:6px;border-radius:999px}
+.tabs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:6px;border-radius:999px}
 .tabs::after{border-radius:999px}
 .tabs button{position:relative;z-index:1;border:1px solid transparent;background:none;border-radius:999px;padding:10px;font-family:var(--display);font-size:15px;letter-spacing:.3em;color:var(--muted)}
 .tabs button[aria-selected="true"]{background:var(--gold-faint);border-color:var(--gold-line);color:var(--gold-deep);font-weight:700}
@@ -236,6 +236,29 @@ button,.acc-head,.chips button{touch-action:manipulation;-webkit-user-select:non
 .admin-sum .big b{font-size:34px;color:var(--gold-deep)}
 .admin-sum .net b{color:var(--leaf)}.admin-sum .owe b{color:var(--warn)}.admin-sum .owe{grid-column:1/-1}
 #viewAdmin .note{margin:8px 4px 0}
+#viewLife{display:flex;flex-direction:column;gap:24px}#viewLife[hidden]{display:none}
+.l-out{color:var(--warn)!important}.l-in{color:var(--gold-deep)!important}
+.lbar{height:4px;border-radius:2px;background:var(--line);margin-top:8px;overflow:hidden}.lbar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--gold-line))}.lbar i.over{background:var(--warn)}
+.life-link{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:14px}
+.life-link>*{position:relative;z-index:1}
+.life-form{padding:16px;display:flex;flex-direction:column}
+.life-form>*{position:relative;z-index:1}
+#lifeForm{display:flex;flex-direction:column;gap:14px}
+.seg2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg2 button{border:1px solid var(--gold-line);background:var(--glass);border-radius:999px;padding:9px;letter-spacing:.2em;color:var(--muted)}
+.seg2 button[aria-pressed="true"]{background:var(--gold-faint);border-color:var(--gold);color:var(--gold-deep);font-weight:700}
+#lTypeE[aria-pressed="true"]{color:var(--warn);border-color:var(--warn);background:var(--warn-soft)}
+.life-trend{padding:12px 10px 6px;overflow-x:auto}.life-trend svg{display:block;width:100%;min-width:320px;height:auto;position:relative;z-index:1}
+.lrow{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:10px 14px;margin-bottom:8px;cursor:pointer}
+.lrow>*{position:relative;z-index:1}
+.lrow .lamt{font-family:var(--display);font-weight:700;font-variant-numeric:tabular-nums}
+.lrow.sel{border-color:var(--gold)}
+.pill.out{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.pill.fx{box-shadow:inset 0 0 0 1px var(--gold)}
+.ls-list{display:flex;flex-direction:column;gap:8px}
+.ls-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end}
+.ls-fx{display:grid;grid-template-columns:minmax(0,1.1fr) 84px minmax(0,1.2fr) auto;gap:8px;align-items:end}
+@media (max-width:420px){.ls-fx{grid-template-columns:minmax(0,1fr) 80px auto}.ls-fx .fxn{grid-column:1/3}}
 .prep-total{font-weight:700;background:var(--gold-faint)}
 .dayprep{padding:12px 16px;margin-bottom:10px}
 .sess-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
@@ -328,6 +351,7 @@ button,.acc-head,.chips button{touch-action:manipulation;-webkit-user-select:non
   <div class="tabs framed" role="tablist" aria-label="切換畫面">
     <button type="button" role="tab" id="tabBook" aria-selected="true">帳本</button>
     <button type="button" role="tab" id="tabAdmin" aria-selected="false">後台</button>
+    <button type="button" role="tab" id="tabLife" aria-selected="false">生活</button>
   </div>
 
   <div id="viewAdmin" hidden>
@@ -350,6 +374,51 @@ button,.acc-head,.chips button{touch-action:manipulation;-webkit-user-select:non
     <section>
       <div class="sess-head"><h2>祈福場次</h2><button type="button" class="glassbtn ghost" id="btnNewSess">＋ 新增場次</button></div>
       <div id="prepDays"></div>
+    </section>
+  </div>
+
+  <div id="viewLife" hidden>
+    <section>
+      <div class="sess-head"><h2>生活收支</h2><button type="button" class="glassbtn ghost" id="btnLifeSet">記帳設定</button></div>
+      <div class="admin-sum framed">
+        <div class="big"><span id="lNetLabel">本月結餘</span><b id="lNet">0</b></div>
+        <div><span>支出</span><b id="lOut" class="l-out">0</b></div>
+        <div><span>收入</span><b id="lIn" class="l-in">0</b></div>
+        <div class="owe" id="lBudgetBox" hidden><span>預算剩餘</span><b id="lBudget">0</b><div class="lbar"><i id="lBar"></i></div></div>
+      </div>
+    </section>
+    <div class="life-link framed" id="lifeLink" hidden></div>
+    <div class="life-link framed" id="lifeFixed" hidden></div>
+    <section class="framed life-form" id="lifeFormCard">
+      <h2 id="lifeFormTitle">記一筆生活帳</h2>
+      <form id="lifeForm" autocomplete="off">
+        <div class="seg2" role="group" aria-label="收支類型">
+          <button type="button" id="lTypeE" aria-pressed="true">支出</button>
+          <button type="button" id="lTypeI" aria-pressed="false">收入</button>
+        </div>
+        <div class="two">
+          <label>金額（元）<input id="lAmt" type="number" inputmode="numeric" min="1" step="1" required placeholder="0"></label>
+          <label>日期<input id="lDate" type="date" required></label>
+        </div>
+        <div class="chips" id="lCats"></div>
+        <label>備註<input id="lNote" type="text" maxlength="60" placeholder="例如：午餐便當、捷運"></label>
+        <div class="actions">
+          <button type="button" class="secondary" id="lCancel" hidden>取消修改</button>
+          <button type="submit" class="primary glassbtn" id="lSave">記下來</button>
+        </div>
+      </form>
+    </section>
+    <section>
+      <h2>支出分類排行</h2>
+      <div class="rows framed" id="lRank"></div>
+    </section>
+    <section>
+      <h2>近 6 個月收支</h2>
+      <div class="framed life-trend" id="lTrend"></div>
+    </section>
+    <section>
+      <h2>明細</h2>
+      <div id="lList"></div>
     </section>
   </div>
 
@@ -446,6 +515,28 @@ button,.acc-head,.chips button{touch-action:manipulation;-webkit-user-select:non
   </form>
 </div>
 
+<div class="sheet-bg" id="lifeSetBg" hidden>
+  <div class="sheet">
+    <h2>生活記帳設定</h2>
+    <label>每月預算（元，填 0 代表不設定）<input id="lsBudget" type="number" inputmode="numeric" min="0" step="100"></label>
+    <h2 style="margin-top:6px">每月固定支出</h2>
+    <div id="lsFixed" class="ls-list"></div>
+    <button type="button" class="glassbtn ghost" id="lsAddFixed" style="align-self:flex-start">＋ 新增固定支出</button>
+    <h2 style="margin-top:6px">支出分類</h2>
+    <div id="lsExp" class="ls-list"></div>
+    <button type="button" class="glassbtn ghost" id="lsAddExp" style="align-self:flex-start">＋ 新增分類</button>
+    <h2 style="margin-top:6px">收入分類</h2>
+    <div id="lsInc" class="ls-list"></div>
+    <button type="button" class="glassbtn ghost" id="lsAddInc" style="align-self:flex-start">＋ 新增分類</button>
+    <p class="note">改分類名稱時，舊的紀錄會一起改成新名稱；刪掉分類不會刪掉舊紀錄。</p>
+    <p class="note" id="lsMsg"></p>
+    <div class="actions">
+      <button type="button" class="secondary" id="lsCancel">取消</button>
+      <button type="button" class="primary glassbtn" id="lsSave">儲存設定</button>
+    </div>
+  </div>
+</div>
+
 <div class="sheet-bg" id="setBg" hidden>
   <div class="sheet">
     <h2>項目與定價</h2>
@@ -514,13 +605,15 @@ const FB_CONFIG={"apiKey": "AIzaSyBTGlylk7KWvCTph--5Uc2CtaCjmj3xbNs", "authDomai
 const MY_SETTINGS={"bless": [], "items": [{"cost": 0, "name": "迴向", "price": 900}, {"cost": 0, "name": "補財庫", "price": 900}, {"cost": 0, "name": "除小人", "price": 900}, {"cost": 0, "name": "神明祝壽", "price": 900}, {"cost": 0, "name": "199 體驗諮詢", "price": 199}, {"cost": 0, "name": "單次諮詢", "price": null}, {"cost": 0, "name": "香氛占卜", "price": null}], "materials": [{"name": "境淨香", "price": 14.5, "unit": "片"}, {"name": "元寶香", "price": 75, "unit": "顆"}, {"name": "布幣香", "price": 75, "unit": "千"}, {"name": "疏文+捐款", "price": 26, "unit": "張"}], "presets": {"神明祝壽": {"元寶香": 9, "疏文+捐款": 1}, "補財庫": {"元寶香": 6, "布幣香": 3, "疏文+捐款": 1}, "迴向": {"元寶香": 3, "境淨香": 16, "疏文+捐款": 1}, "除小人": {"元寶香": 3, "境淨香": 16, "疏文+捐款": 1}}};
 const MY_SESSIONS=[{"date": "2026-11-23", "name": "水關大帝祝壽", "note": "", "id": "rpym9r29f2vcpky1y9qv"}];
 let fbAuth=null,fbStore=null,unsubs=[];
+const LIFE_DEF={budget:0,exp:["飲食","交通","居住","購物","娛樂社交","自我投資","公會","保險","電話費","課程分期","基金股票","其他"],inc:["正職薪水","命理諮詢","自媒體","其他收入"],fixed:[{id:"f1",cat:"基金股票",amount:5000,note:"每月定期定額"}]};
+let lifeEntries=[],lifeS=JSON.parse(JSON.stringify(LIFE_DEF)),lifeCol=null,lifeRef=null;
 function showLogin(msg){$("loginBg").hidden=false;$("loginMsg").textContent=msg||"";$("btnLogin").disabled=false}
 async function init(){
   if(!window.firebase){$("status").textContent="連不上雲端，請確認網路後重新打開。";showLogin("連不上雲端，請確認網路後重新打開。");return}
   firebase.initializeApp(FB_CONFIG);fbAuth=firebase.auth();fbStore=firebase.firestore();
   try{await fbStore.enablePersistence({synchronizeTabs:true})}catch(e){}
   fbAuth.onAuthStateChanged(u=>{unsubs.forEach(f=>{try{f()}catch(e){}});unsubs=[];
-    if(!u){records=[];sessions=[];loaded=false;render();showLogin("");return}
+    if(!u){records=[];sessions=[];lifeEntries=[];loaded=false;render();showLogin("");return}
     $("loginBg").hidden=true;$("acctEmail").textContent=u.email||"";startSync(u.uid)});
 }
 function startSync(uid){
@@ -528,6 +621,10 @@ function startSync(uid){
   db={collection:n=>root.collection(n),doc:p=>{const [c,d]=p.split("/");return root.collection(c).doc(d)}};
   col=db.collection("records"); setRef=db.doc("config/settings"); sessCol=db.collection("sessions"); localMode=false;
   let timer=setTimeout(()=>{$("status").textContent="雲端連線比較慢，資料可能還沒更新。"},10000);
+  lifeCol=root.collection("life");lifeRef=root.collection("config").doc("life");
+  unsubs.push(lifeRef.onSnapshot(sn=>{if(sn.exists){const d=sn.data();lifeS={budget:+d.budget||0,exp:(d.exp&&d.exp.length)?d.exp:LIFE_DEF.exp.slice(),inc:(d.inc&&d.inc.length)?d.inc:LIFE_DEF.inc.slice(),fixed:Array.isArray(d.fixed)?d.fixed:[]};render()}
+    else if(!sn.metadata.fromCache){lifeRef.set(JSON.parse(JSON.stringify(LIFE_DEF))).catch(()=>{})}},()=>{}));
+  unsubs.push(lifeCol.orderBy("date","desc").limit(3000).onSnapshot(sn=>{lifeEntries=sn.docs.map(d=>Object.assign({id:d.id},d.data()));render()},()=>{}));
   unsubs.push(setRef.onSnapshot(async sn=>{
     if(sn.exists){settings=normSettings(sn.data());render();return}
     if(sn.metadata.fromCache)return;
@@ -623,9 +720,11 @@ function renderAdmin(list){
   if(unsched.length)card("還沒排場次","",`${unsched.length} 件祈福還沒決定哪一天做`,unsched,null);
 }
 function render(){
-  $("viewBook").hidden=view!=="book";$("viewAdmin").hidden=view!=="admin";
-  $("tabBook").setAttribute("aria-selected",view==="book");$("tabAdmin").setAttribute("aria-selected",view==="admin");
+  $("viewBook").hidden=view!=="book";$("viewAdmin").hidden=view!=="admin";$("viewLife").hidden=view!=="life";
+  $("tabBook").setAttribute("aria-selected",view==="book");$("tabAdmin").setAttribute("aria-selected",view==="admin");$("tabLife").setAttribute("aria-selected",view==="life");
   $("btnAdd").hidden=view!=="book";
+  if(view==="life"){$("mlabel").textContent=mode==="m"?`${year} 年 ${month} 月`:`${year} 年全年`;
+    $("segM").setAttribute("aria-pressed",mode==="m");$("segY").setAttribute("aria-pressed",mode==="y");renderLife();return}
   if(view==="admin"){$("mlabel").textContent=mode==="m"?`${year} 年 ${month} 月`:`${year} 年全年`;
     $("segM").setAttribute("aria-pressed",mode==="m");$("segY").setAttribute("aria-pressed",mode==="y");renderAdmin(records.filter(inRange));return}
   $("mlabel").textContent=mode==="m"?`${year} 年 ${month} 月`:`${year} 年全年`;
@@ -838,7 +937,7 @@ $("setSave").onclick=async()=>{
 /* ---------- period nav ---------- */
 $("prev").onclick=()=>{if(mode==="y")year--;else if(--month<1){month=12;year--}render()};
 $("next").onclick=()=>{if(mode==="y")year++;else if(++month>12){month=1;year++}render()};
-$("tabBook").onclick=()=>{view="book";render()};$("tabAdmin").onclick=()=>{view="admin";render()};
+$("tabBook").onclick=()=>{view="book";render()};$("tabAdmin").onclick=()=>{view="admin";render()};$("tabLife").onclick=()=>{view="life";render()};
 $("segM").onclick=()=>{mode="m";render()}; $("segY").onclick=()=>{mode="y";render()};
 
 const cover=$("cover");let coverGone=false;
@@ -854,7 +953,7 @@ $("loginForm").addEventListener("submit",async e=>{e.preventDefault();if(!fbAuth
 $("btnLogout").onclick=async()=>{const b=$("btnLogout");if(b.textContent!=="確定登出？"){b.textContent="確定登出？";setTimeout(()=>b.textContent="登出",4000);return}
   $("setBg").hidden=true;try{await fbAuth.signOut()}catch(e){}};
 $("btnExport").onclick=()=>{
-  const data={app:"penny-ledger",version:2,exportedAt:new Date().toISOString(),records,sessions,settings};
+  const data={app:"penny-ledger",version:3,exportedAt:new Date().toISOString(),records,sessions,settings,life:{entries:lifeEntries,settings:lifeS}};
   const blob=new Blob([JSON.stringify(data,null,1)],{type:"application/json"});
   const d=new Date(),name=`Penny金庫備份-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}.json`;
   const file=new File([blob],name,{type:"application/json"});
@@ -868,10 +967,129 @@ $("fileImport").onchange=async e=>{
     for(const r of d.records){if(r&&r.date&&!ids.has(r.id)){const {id,...body}=r;await (id?col.doc(id):col.doc()).set(body);n++}}
     if(Array.isArray(d.sessions)){const si=new Set(sessions.map(x=>x.id));for(const x of d.sessions){if(x&&x.date&&!si.has(x.id)){const {id,...body}=x;await sessCol.doc(id).set(body)}}}
     if(d.settings){await setRef.set(JSON.parse(JSON.stringify(normSettings(d.settings))))}
+    if(d.life&&Array.isArray(d.life.entries)){const li=new Set(lifeEntries.map(x=>x.id));for(const x of d.life.entries){if(x&&x.date&&!li.has(x.id)){const {id,...body}=x;await (id?lifeCol.doc(id):lifeCol.doc()).set(body)}}
+      if(d.life.settings)await lifeRef.set(JSON.parse(JSON.stringify(d.life.settings)))}
     $("importMsg").textContent=`匯入完成，新增 ${n} 筆紀錄。`;toast("備份匯入好了")}
   catch(err){$("importMsg").textContent="這個檔案不是 Penny 金庫的備份，或沒有存成功，請再試一次。"}
   e.target.value="";
 };
+
+/* ---------- 生活記帳 ---------- */
+let lType="e",lEditId=null,lCat="",lArmed=null,lDraft=null;
+const esc=v=>String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const ym=()=>year+"-"+pad(month);
+function lifeIn(e){return inRange(e)}
+function lDrawCats(){const list=(lType==="e"?lifeS.exp:lifeS.inc).slice();if(lCat&&!list.includes(lCat))list.push(lCat);if(!list.includes(lCat))lCat=list[0]||"";
+  chips($("lCats"),list,lCat,o=>{lCat=o;lDrawCats()})}
+function lSetType(t,cat){lType=t;$("lTypeE").setAttribute("aria-pressed",t==="e");$("lTypeI").setAttribute("aria-pressed",t==="i");lCat=cat||"";lDrawCats()}
+$("lTypeE").onclick=()=>lSetType("e");$("lTypeI").onclick=()=>lSetType("i");
+function lDefaultDate(){return (mode==="m"&&ym()!==todayStr().slice(0,7))?ym()+"-01":todayStr()}
+function lEndEdit(){lEditId=null;$("lifeFormTitle").textContent="記一筆生活帳";$("lSave").textContent="記下來";$("lCancel").hidden=true;$("lAmt").value="";$("lNote").value="";$("lDate").value=lDefaultDate();lSetType(lType);render()}
+function lStartEdit(e){lEditId=e.id;$("lifeFormTitle").textContent="修改這筆生活帳";$("lSave").textContent="儲存修改";$("lCancel").hidden=false;
+  $("lAmt").value=e.amount;$("lDate").value=e.date;$("lNote").value=e.note||"";lSetType(e.type,e.cat);render();$("lifeFormCard").scrollIntoView({behavior:"smooth",block:"start"})}
+$("lCancel").onclick=lEndEdit;
+$("lifeForm").addEventListener("submit",async ev=>{ev.preventDefault();if(!lifeCol)return;
+  const amount=Math.round(+$("lAmt").value);if(!(amount>0)){toast("請填金額");return}
+  if(!lCat){toast("請選一個分類");return}
+  const base=lEditId?lifeEntries.find(x=>x.id===lEditId):null;
+  const e={type:lType,amount,date:$("lDate").value||todayStr(),cat:lCat,note:$("lNote").value.trim(),createdAt:base?base.createdAt||Date.now():Date.now()};
+  if(base&&base.fixedId)e.fixedId=base.fixedId;if(base&&base.linkKey)e.linkKey=base.linkKey;
+  $("lSave").disabled=true;
+  try{if(lEditId){await lifeCol.doc(lEditId).set(e);toast("已修改");lEndEdit()}else{await lifeCol.add(e);$("lAmt").value="";$("lNote").value="";toast("記好了 "+fmt(amount)+" 元")}
+    const [y,m]=e.date.split("-").map(Number);if(y!==year||(mode==="m"&&m!==month)){year=y;month=m;render()}}
+  catch(err){toast("沒存成功，請再試一次")}finally{$("lSave").disabled=false}});
+function lPending(){const k=ym();const m=lifeEntries.filter(e=>(e.date||"").startsWith(k));return lifeS.fixed.filter(f=>+f.amount>0&&!m.some(e=>e.fixedId===f.id))}
+function renderLife(){
+  if(!$("lDate").value)$("lDate").value=lDefaultDate();
+  if(!$("lCats").children.length)lSetType(lType,lCat);
+  const mine=lifeEntries.filter(lifeIn);
+  const out=mine.filter(e=>e.type==="e").reduce((a,e)=>a+(+e.amount||0),0),inc=mine.filter(e=>e.type==="i").reduce((a,e)=>a+(+e.amount||0),0);
+  const net=inc-out;$("lNetLabel").textContent=mode==="m"?"本月結餘":"今年結餘";
+  $("lNet").textContent=(net<0?"-":"")+fmt(Math.abs(net));$("lNet").style.color=net<0?"var(--warn)":"";
+  $("lOut").textContent=fmt(out);$("lIn").textContent=fmt(inc);
+  const showB=mode==="m"&&lifeS.budget>0;$("lBudgetBox").hidden=!showB;
+  if(showB){const left=lifeS.budget-out;$("lBudget").textContent=(left<0?"超支 ":"")+fmt(Math.abs(left));$("lBudget").style.color=left<0?"var(--warn)":"var(--ink)";
+    $("lBar").style.width=Math.min(100,out/lifeS.budget*100)+"%";$("lBar").classList.toggle("over",left<0)}
+  // link from the consultation ledger: this month's paid net becomes a 命理諮詢 income line
+  const lk=$("lifeLink");
+  if(mode==="m"){const k=ym();const rs=records.filter(r=>(r.date||"").startsWith(k)&&r.paid!==false);
+    const pnet=Math.round(rs.reduce((a,r)=>a+(+r.amount||0)-(+r.cost||0),0));const done=lifeEntries.find(e=>e.linkKey==="penny-"+k);
+    lk.hidden=!(pnet>0||done);lk.textContent="";
+    if(!lk.hidden){const sp=document.createElement("span");
+      if(done){sp.textContent=`諮詢帳本本月淨賺 ${fmt(pnet)} 元，已記入生活收入 ${fmt(done.amount)} 元`;lk.appendChild(sp);
+        if(Math.round(+done.amount)!==pnet&&pnet>0){const b=document.createElement("button");b.type="button";b.className="glassbtn ghost";b.textContent="更新成最新金額";
+          b.onclick=async()=>{try{const {id:_i,...body}=done;await lifeCol.doc(done.id).set(Object.assign(body,{amount:pnet}));toast("已更新")}catch(e){toast("沒存成功，請再試一次")}};lk.appendChild(b)}}
+      else{sp.textContent=`諮詢帳本本月淨賺 ${fmt(pnet)} 元，還沒記入生活收入`;lk.appendChild(sp);
+        const b=document.createElement("button");b.type="button";b.className="glassbtn ghost";b.textContent="記入命理諮詢收入";
+        b.onclick=async()=>{b.disabled=true;const d=k===todayStr().slice(0,7)?todayStr():(new Date(year,month,0).getFullYear()+"-"+pad(month)+"-"+pad(new Date(year,month,0).getDate()));
+          try{await lifeCol.add({type:"i",amount:pnet,date:d,cat:lifeS.inc.includes("命理諮詢")?"命理諮詢":(lifeS.inc[0]||"命理諮詢"),note:"Penny 金庫諮詢・祈福淨賺",linkKey:"penny-"+k,createdAt:Date.now()});toast("已記入生活收入")}catch(e){b.disabled=false;toast("沒存成功，請再試一次")}};lk.appendChild(b)}}}
+  else lk.hidden=true;
+  // fixed expenses
+  const fb=$("lifeFixed");const fx=lifeS.fixed.filter(f=>+f.amount>0);fb.hidden=!(mode==="m"&&fx.length);fb.textContent="";
+  if(!fb.hidden){const pend=lPending();const sp=document.createElement("span");
+    if(pend.length){sp.textContent=`本月固定支出還沒帶入：${pend.map(f=>f.cat).join("、")}（${fmt(pend.reduce((a,f)=>a+(+f.amount),0))} 元）`;fb.appendChild(sp);
+      const b=document.createElement("button");b.type="button";b.className="glassbtn ghost";b.textContent="帶入固定支出";
+      b.onclick=async()=>{b.disabled=true;const d=ym()===todayStr().slice(0,7)?todayStr():ym()+"-01";
+        try{for(const f of pend)await lifeCol.add({type:"e",amount:+f.amount,date:d,cat:f.cat,note:f.note||"每月固定",fixedId:f.id,createdAt:Date.now()});toast("已帶入固定支出")}catch(e){b.disabled=false;toast("沒有全部帶入，請再按一次")}};fb.appendChild(b)}
+    else{sp.textContent="本月固定支出已帶入 ✓";fb.appendChild(sp)}}
+  // ranking
+  const by={};mine.filter(e=>e.type==="e").forEach(e=>by[e.cat]=(by[e.cat]||0)+(+e.amount||0));
+  const rk=Object.entries(by).sort((a,b)=>b[1]-a[1]);const mx=rk.length?rk[0][1]:1;const R=$("lRank");R.textContent="";
+  if(!rk.length)R.innerHTML='<div class="none">這段期間還沒有支出。</div>';
+  rk.forEach(([c,v])=>{const row=document.createElement("div");row.className="row";row.innerHTML=`<div class="n"></div><div class="c">${Math.round(v/out*100)}%</div><div class="a">${fmt(v)}</div>`;
+    row.querySelector(".n").textContent=c;const b=document.createElement("div");b.className="bar";b.style.width=Math.max(4,v/mx*100)+"%";row.querySelector(".n").appendChild(b);R.appendChild(row)});
+  // 6-month trend
+  const months=[];for(let i=5;i>=0;i--){const d=new Date(year,month-1-i,1);months.push(d.getFullYear()+"-"+pad(d.getMonth()+1))}
+  const data=months.map(k=>{const es=lifeEntries.filter(e=>(e.date||"").startsWith(k));return{k,o:es.filter(e=>e.type==="e").reduce((a,e)=>a+(+e.amount||0),0),i:es.filter(e=>e.type==="i").reduce((a,e)=>a+(+e.amount||0),0)}});
+  const top=Math.max(1,...data.map(d=>Math.max(d.o,d.i)));const st=Math.pow(10,Math.floor(Math.log10(top)));const nice=Math.ceil(top/st)*st;
+  const W=520,H=210,L=48,B=28,T=18,cw=(W-L-8)/6,bw=Math.min(22,cw/3.2);const yy=v=>T+(H-T-B)*(1-v/nice);
+  let g="";for(let t=0;t<=4;t++){const v=nice*t/4;g+=`<line x1="${L}" x2="${W-4}" y1="${yy(v)}" y2="${yy(v)}" style="stroke:var(--line)"/><text x="${L-6}" y="${yy(v)+4}" text-anchor="end" style="fill:var(--muted);font-size:10px">${v>=10000?(v/10000).toFixed(v%10000?1:0)+"萬":Math.round(v).toLocaleString()}</text>`}
+  const bars=data.map((d,i)=>{const cx=L+cw*i+cw/2;const cur=d.k===ym();return `<rect x="${cx-bw-2}" y="${yy(d.o)}" width="${bw}" height="${yy(0)-yy(d.o)}" rx="3" style="fill:var(--warn);opacity:.75"><title>支出 ${fmt(d.o)}</title></rect><rect x="${cx+2}" y="${yy(d.i)}" width="${bw}" height="${yy(0)-yy(d.i)}" rx="3" style="fill:var(--gold)"><title>收入 ${fmt(d.i)}</title></rect><text x="${cx}" y="${H-8}" text-anchor="middle" style="fill:${cur?"var(--ink)":"var(--muted)"};font-size:11px;font-weight:${cur?700:400}">${+d.k.slice(5)}月</text>`}).join("");
+  $("lTrend").innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="近六個月收支">${g}${bars}<rect x="${W-120}" y="2" width="9" height="9" rx="2" style="fill:var(--warn);opacity:.75"/><text x="${W-107}" y="10" style="fill:var(--muted);font-size:10px">支出</text><rect x="${W-66}" y="2" width="9" height="9" rx="2" style="fill:var(--gold)"/><text x="${W-53}" y="10" style="fill:var(--muted);font-size:10px">收入</text></svg>`;
+  // list
+  const L2=$("lList");L2.textContent="";
+  if(!mine.length){L2.innerHTML=`<div class="empty framed"><b>${mode==="m"?"這個月":"今年"}還沒有生活帳</b>在上面「記一筆生活帳」記下第一筆。</div>`;return}
+  let last="";mine.slice().sort((a,b)=>b.date.localeCompare(a.date)||(b.createdAt||0)-(a.createdAt||0)).forEach(e=>{
+    if(e.date!==last){last=e.date;const dt=new Date(e.date+"T00:00");const d=document.createElement("div");d.className="day";d.textContent=`${dt.getMonth()+1} 月 ${dt.getDate()} 日 週${"日一二三四五六"[dt.getDay()]}`;L2.appendChild(d)}
+    const r=document.createElement("div");r.className="lrow framed"+(e.id===lEditId?" sel":"");r.tabIndex=0;
+    r.innerHTML=`<span class="pill ${e.type==="i"?"tag":"out"}${e.fixedId?" fx":""}"></span><span class="lnote"></span><span class="lamt" style="color:${e.type==="i"?"var(--gold-deep)":"var(--warn)"}">${e.type==="i"?"+":"-"}${fmt(e.amount)}</span><button type="button" class="mini danger">${lArmed===e.id?"確定刪除？":"刪除"}</button>`;
+    r.children[0].textContent=e.cat;r.children[1].textContent=e.note||"";
+    r.onclick=ev=>{if(ev.target.closest("button"))return;lStartEdit(e)};
+    r.onkeydown=ev=>{if(ev.key==="Enter")lStartEdit(e)};
+    r.querySelector("button").onclick=async()=>{if(lArmed!==e.id){lArmed=e.id;render();setTimeout(()=>{if(lArmed===e.id){lArmed=null;render()}},4000);return}
+      lArmed=null;try{if(lEditId===e.id)lEndEdit();await lifeCol.doc(e.id).delete();toast("已刪除")}catch(err){toast("刪除失敗，請再試一次")}};
+    L2.appendChild(r)});
+}
+/* settings sheet */
+function lsRender(){
+  $("lsBudget").value=lDraft.budget||0;
+  const cat=(arr,key)=>{const box=$(key);box.textContent="";arr.forEach((c,i)=>{const it=document.createElement("div");it.className="ls-item";
+    it.innerHTML='<input type="text" maxlength="20" aria-label="分類名稱"><button type="button" class="mini danger">移除</button>';const inp=it.querySelector("input");inp.value=c.name;
+    inp.oninput=()=>{c.name=inp.value};it.querySelector("button").onclick=()=>{arr.splice(i,1);lsRender()};box.appendChild(it)})};
+  cat(lDraft.exp,"lsExp");cat(lDraft.inc,"lsInc");
+  const fbx=$("lsFixed");fbx.textContent="";if(!lDraft.fixed.length)fbx.innerHTML='<p class="note">還沒有固定支出。</p>';
+  lDraft.fixed.forEach((f,i)=>{const it=document.createElement("div");it.className="ls-fx";
+    it.innerHTML='<select aria-label="分類"></select><input type="number" min="0" inputmode="numeric" aria-label="金額"><input class="fxn" type="text" maxlength="30" placeholder="備註" aria-label="備註"><button type="button" class="mini danger">移除</button>';
+    const [sel,amt,nt]=it.querySelectorAll("select,input");const names=lDraft.exp.map(c=>c.name.trim()).filter(Boolean);if(!names.includes(f.cat))names.unshift(f.cat);
+    names.forEach(n=>{const o=document.createElement("option");o.textContent=n;o.value=n;sel.appendChild(o)});sel.value=f.cat;amt.value=f.amount;nt.value=f.note||"";
+    sel.onchange=()=>f.cat=sel.value;amt.oninput=()=>f.amount=Math.max(0,Math.round(+amt.value||0));nt.oninput=()=>f.note=nt.value;
+    it.querySelector("button").onclick=()=>{lDraft.fixed.splice(i,1);lsRender()};fbx.appendChild(it)});
+}
+$("btnLifeSet").onclick=()=>{lDraft={budget:lifeS.budget,exp:lifeS.exp.map(n=>({orig:n,name:n})),inc:lifeS.inc.map(n=>({orig:n,name:n})),fixed:JSON.parse(JSON.stringify(lifeS.fixed))};$("lsMsg").textContent="";lsRender();$("lifeSetBg").hidden=false};
+$("lsBudget").oninput=()=>{lDraft.budget=Math.max(0,Math.round(+$("lsBudget").value||0))};
+$("lsAddExp").onclick=()=>{lDraft.exp.push({orig:null,name:"新分類"});lsRender()};
+$("lsAddInc").onclick=()=>{lDraft.inc.push({orig:null,name:"新分類"});lsRender()};
+$("lsAddFixed").onclick=()=>{lDraft.fixed.push({id:"f"+Date.now(),cat:lDraft.exp[0]?lDraft.exp[0].name:"其他",amount:0,note:""});lsRender()};
+$("lsCancel").onclick=()=>$("lifeSetBg").hidden=true;
+$("lifeSetBg").onclick=e=>{if(e.target.id==="lifeSetBg")$("lifeSetBg").hidden=true};
+$("lsSave").onclick=async()=>{if(!lifeRef)return;
+  const clean=a=>{const seen=new Set();return a.map(c=>({orig:c.orig,name:c.name.trim()})).filter(c=>c.name&&!seen.has(c.name)&&seen.add(c.name))};
+  const exp=clean(lDraft.exp),inc=clean(lDraft.inc);if(!exp.length||!inc.length){$("lsMsg").textContent="支出和收入至少各要留一個分類。";return}
+  const renames=[];[["e",exp],["i",inc]].forEach(([t,a])=>a.forEach(c=>{if(c.orig&&c.orig!==c.name)renames.push([t,c.orig,c.name])}));
+  const next={budget:lDraft.budget,exp:exp.map(c=>c.name),inc:inc.map(c=>c.name),fixed:lDraft.fixed.filter(f=>f.cat).map(f=>{const r=renames.find(r=>r[0]==="e"&&r[1]===f.cat);return{id:f.id,cat:r?r[2]:f.cat,amount:+f.amount||0,note:f.note||""}})};
+  $("lsSave").disabled=true;$("lsMsg").textContent="儲存中…";
+  try{await lifeRef.set(next);for(const[t,from,to] of renames){for(const e of lifeEntries.filter(e=>e.type===t&&e.cat===from)){const {id,...b}=e;b.cat=to;await lifeCol.doc(id).set(b)}}
+    $("lifeSetBg").hidden=true;toast("設定存好了")}catch(e){$("lsMsg").textContent="沒存成功，請再按一次。"}finally{$("lsSave").disabled=false}};
 render(); init();
 })();
 </script>
