@@ -160,6 +160,14 @@ select option{background:var(--solid);color:var(--ink)}
 .mat-head,.mat-edit{display:grid;grid-template-columns:1fr 56px 72px auto;gap:8px;align-items:end}
 .mat-head{font-size:12px;color:var(--muted);letter-spacing:.06em}
 .price-head{display:grid;grid-template-columns:1fr 72px 72px auto;gap:8px;font-size:12px;color:var(--muted);letter-spacing:.06em}
+.sel-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:14px}
+.sel-list li{display:flex;justify-content:space-between;gap:10px;border-bottom:1px dashed var(--gold-line);padding:4px 0}
+.sel-list li b{font-weight:500;color:var(--gold-deep);font-variant-numeric:tabular-nums}
+.sel-sub{font-size:12px;color:var(--muted);letter-spacing:.06em;margin-top:4px}
+.item-card{border:1px solid var(--gold-line);border-radius:16px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;background:var(--glass)}
+.add-card{border-style:dashed}
+.item-grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr) auto;gap:8px;align-items:end}
+.item-grid button{white-space:nowrap}
 .note{font-size:12px;color:var(--muted);margin:0}
 .toast{position:fixed;left:50%;transform:translateX(-50%);top:calc(14px + env(safe-area-inset-top,0px));background:var(--glass);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid var(--gold);color:var(--gold-deep);padding:8px 18px;border-radius:999px;font-size:14px;z-index:30;letter-spacing:.1em}
 .status{font-size:12px;color:var(--muted);text-align:center}
@@ -659,14 +667,17 @@ button,.acc-head,.chips button{touch-action:manipulation;-webkit-user-select:non
 <div class="sheet-bg" id="setBg" hidden>
   <div class="sheet">
     <h2>項目與定價</h2>
-    <p class="note">選項目時會自動帶入這裡的定價和成本，記帳時還是可以改。祈福的成本填香、疏文等材料費，就能算出淨賺。</p>
-    <div class="price-head"><span>項目</span><span>定價</span><span>成本</span><span></span></div>
-    <div id="priceList" style="display:flex;flex-direction:column;gap:8px"></div>
-    <div class="price-row">
-      <input type="text" id="newItem" placeholder="新增項目名稱" maxlength="30">
-      <input type="number" id="newPrice" placeholder="定價" min="0" inputmode="numeric">
-      <input type="number" id="newCost" placeholder="成本" min="0" inputmode="numeric">
-      <button type="button" class="glassbtn ghost" id="addItem">加入</button>
+    <p class="note">「分類」打一樣的字就會排在同一排，例如全部打「命理收入」就會放在一起。定價填 0 會顯示「免費」。記帳時金額還是可以改。</p>
+    <datalist id="groupList"></datalist>
+    <div id="priceList" style="display:flex;flex-direction:column;gap:10px"></div>
+    <div class="item-card add-card">
+      <label>新增項目<input type="text" id="newItem" placeholder="例：線上諮詢" maxlength="30"></label>
+      <div class="item-grid">
+        <label>分類<input type="text" id="newGroup" list="groupList" maxlength="12" placeholder="命理收入"></label>
+        <label>定價<input type="number" id="newPrice" min="0" inputmode="numeric" placeholder="不填＝自訂"></label>
+        <label>成本<input type="number" id="newCost" min="0" inputmode="numeric" placeholder="0"></label>
+        <button type="button" class="glassbtn ghost" id="addItem">加入</button>
+      </div>
     </div>
     <label>祈福類別（用頓號、隔開）<input type="text" id="blessInput"></label>
     <h2 style="margin-top:6px">祈福材料單價</h2>
@@ -705,7 +716,9 @@ function normSettings(d){d=d||{};const bless=[...(d.bless||DEFAULT_SETTINGS.bles
   const presets=Object.assign(JSON.parse(JSON.stringify(DEFAULT_SETTINGS.presets)),d.presets||{});
   const items=JSON.parse(JSON.stringify(d.items||DEFAULT_SETTINGS.items));
   DEFAULT_SETTINGS.items.filter(i=>presets[i.name]&&!items.some(x=>x.name===i.name)).forEach(i=>{const at=items.findIndex(x=>/祈福/.test(x.name));items.splice(at<0?items.length:at,0,Object.assign({},i))});
-  return {items,bless,presets,materials:(d.materials&&d.materials.length)?d.materials:JSON.parse(JSON.stringify(DEFAULT_SETTINGS.materials))}}
+  items.forEach(i=>{if(!i.group)i.group="命理收入"});
+  if(!d.freeAdded&&!items.some(i=>/免費/.test(i.name))){const at=items.findIndex(i=>/體驗/.test(i.name));items.splice(at<0?items.length:at+1,0,{name:"體驗諮詢（免費）",price:0,cost:0,group:"命理收入"})}
+  return {items,bless,presets,freeAdded:true,materials:(d.materials&&d.materials.length)?d.materials:JSON.parse(JSON.stringify(DEFAULT_SETTINGS.materials))}}
 let settings=JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
 let records=[]; let sessions=[]; let db=null, col=null, setRef=null, sessCol=null, localMode=false;
 const now=new Date(); let year=now.getFullYear(), month=now.getMonth()+1, mode="m";
@@ -748,7 +761,7 @@ function startSync(uid){
     else if(!sn.metadata.fromCache){lifeRef.set(JSON.parse(JSON.stringify(LIFE_DEF))).catch(()=>{})}},()=>{}));
   unsubs.push(lifeCol.orderBy("date","desc").limit(3000).onSnapshot(sn=>{lifeEntries=sn.docs.map(d=>Object.assign({id:d.id},d.data()));render()},()=>{}));
   unsubs.push(setRef.onSnapshot(async sn=>{
-    if(sn.exists){settings=normSettings(sn.data());render();return}
+    if(sn.exists){const raw=sn.data();settings=normSettings(raw);render();if(!raw.freeAdded&&!sn.metadata.fromCache)setRef.set(JSON.parse(JSON.stringify(settings))).catch(()=>{});return}
     if(sn.metadata.fromCache)return;
     // first sign-in: put her saved setup and sessions into the cloud, plus anything recorded on this device before sync
     try{settings=normSettings(lsGet("pc_settings")||MY_SETTINGS);await setRef.set(JSON.parse(JSON.stringify(settings)));
@@ -792,12 +805,18 @@ async function saveSettings(s){
 /* ---------- view ---------- */
 function inRange(r){const p=mode==="m"?year+"-"+pad(month):String(year);return (r.date||"").startsWith(p)}
 let view="book";
+function recItems(r){if(Array.isArray(r.items)&&r.items.length)return r.items;return [{name:r.item||"其他",price:+r.amount||0}]}
+function presetCost(name){const pr=(settings.presets||{})[name];if(!pr)return 0;return settings.materials.reduce((s,m)=>s+(+pr[m.name]||0)*(+m.price||0),0)}
+function splitRec(r){const its=recItems(r);const amt=+r.amount||0,cost=+r.cost||0;
+  const ps=its.reduce((s,i)=>s+(+i.price||0),0);const bl=its.filter(i=>isBless(i.name));const pcs=bl.reduce((s,i)=>s+presetCost(i.name),0);
+  return its.map(i=>{const b=isBless(i.name);return{name:i.name,bless:b,a:ps>0?amt*(+i.price||0)/ps:amt/its.length,
+    k:!b?(bl.length?0:cost/its.length):(pcs>0?cost*presetCost(i.name)/pcs:cost/bl.length)}})}
 function getMats(r){if(r.mats&&Object.keys(r.mats).length)return r.mats;const p=settings.presets||{};return p[r.item]||p[r.bless]||{}}
 function renderAdmin(list){
   const paid=list.filter(r=>r.paid!==false),unpaid=list.filter(r=>r.paid===false);
   const sum=a=>a.reduce((s,r)=>s+(+r.amount||0),0);
   const bless=list.filter(r=>BLESS_ITEMS.test(r.item||"")),blessPaid=bless.filter(r=>r.paid!==false);
-  const total=sum(paid),bi=sum(blessPaid),cost=paid.reduce((s,r)=>s+(+r.cost||0),0),owe=sum(unpaid);
+  const total=sum(paid),bi=Math.round(paid.reduce((s,r)=>s+splitRec(r).filter(x=>x.bless).reduce((t,x)=>t+x.a,0),0)),cost=paid.reduce((s,r)=>s+(+r.cost||0),0),owe=sum(unpaid);
   $("aTotal").textContent=fmt(total)+" 元";$("aBless").textContent=fmt(bi);$("aConsult").textContent=fmt(total-bi);
   $("aCost").textContent=fmt(cost);$("aNet").textContent=fmt(total-cost);$("aOwe").textContent=fmt(owe);$("aOweBox").hidden=owe<=0;
   // incense totals across every blessing in the period, paid or not, since all of them must be prepared
@@ -809,7 +828,7 @@ function renderAdmin(list){
   mats.forEach(m=>{const q=tot[m.name],amt=q*(+m.price||0);grand+=amt;const row=document.createElement("div");row.className="row";
     row.innerHTML=`<div class="n"></div><div class="c">${fmt(q)} ${m.unit}</div><div class="a">${fmt(amt)} 元</div>`;row.querySelector(".n").textContent=m.name;
     const u=document.createElement("div");u.className="sub2";u.style.color="var(--muted)";u.textContent=`單價 ${fmt(m.price)} 元`;row.querySelector(".n").appendChild(u);pr.appendChild(row)});
-  if(mats.length){const row=document.createElement("div");row.className="row prep-total";row.innerHTML=`<div class="n">香品合計</div><div class="c">${bless.length} 件祈福</div><div class="a">${fmt(grand)} 元</div>`;pr.appendChild(row)}
+  if(mats.length){const row=document.createElement("div");row.className="row prep-total";row.innerHTML=`<div class="n">香品合計</div><div class="c">${bless.reduce((n,r)=>n+splitRec(r).filter(x=>x.bless).length,0)} 件祈福</div><div class="a">${fmt(grand)} 元</div>`;pr.appendChild(row)}
   $("prepNote").textContent=bless.length?"包含還沒收錢的祈福，因為一樣要準備香品。":"";
   // one card per blessing session the user created, plus blessings not yet placed in a session
   const box=$("prepDays");box.textContent="";
@@ -867,7 +886,7 @@ function render(){
   $("sAvg").innerHTML=fmt(paid.length?income/paid.length:0)+"<small>元</small>"; $("avgBox").hidden=owe>0;
 
   // items
-  const byItem={}; list.forEach(r=>{const k=r.item||"其他";(byItem[k]=byItem[k]||{c:0,a:0,k:0}).c++; if(r.paid!==false){byItem[k].a+=(+r.amount||0);byItem[k].k+=(+r.cost||0)}});
+  const byItem={}; list.forEach(r=>splitRec(r).forEach(x=>{const k=x.name;(byItem[k]=byItem[k]||{c:0,a:0,k:0}).c++; if(r.paid!==false){byItem[k].a+=x.a;byItem[k].k+=x.k}}));
   const names=[...settings.items.map(i=>i.name),...Object.keys(byItem).filter(k=>!settings.items.some(i=>i.name===k))];
   const max=Math.max(1,...Object.values(byItem).map(v=>v.a));
   const ir=$("itemRows"); ir.textContent="";
@@ -881,9 +900,9 @@ function render(){
 
   // bless
   const blessList=list.filter(r=>r.bless||BLESS_ITEMS.test(r.item||""));
-  const byB={}; blessList.forEach(r=>{const k=r.bless||"未分類";(byB[k]=byB[k]||{c:0,a:0,k:0}).c++; if(r.paid!==false){byB[k].a+=(+r.amount||0);byB[k].k+=(+r.cost||0)}});
+  const byB={}; blessList.forEach(r=>{const parts=splitRec(r).filter(x=>x.bless);(parts.length?parts:[{name:"",a:+r.amount||0,k:+r.cost||0}]).forEach(x=>{const k=settings.bless.includes(x.name)?x.name:(r.bless||"未分類");(byB[k]=byB[k]||{c:0,a:0,k:0}).c++; if(r.paid!==false){byB[k].a+=x.a;byB[k].k+=x.k}})});
   const br=$("blessRows"); br.textContent=""; $("blessSec").hidden=!blessList.length;
-  if(blessList.length){const bi=blessList.filter(r=>r.paid!==false).reduce((s,r)=>s+(+r.amount||0),0),bc=blessList.filter(r=>r.paid!==false).reduce((s,r)=>s+(+r.cost||0),0);
+  if(blessList.length){const bp=blessList.filter(r=>r.paid!==false).flatMap(r=>splitRec(r).filter(x=>x.bless));const bi=bp.reduce((s,x)=>s+x.a,0),bc=bp.reduce((s,x)=>s+x.k,0);
     const sum=document.createElement("div");sum.className="bless-sum";
     sum.innerHTML=`<div><div class="k">祈福收入</div><div class="v">${fmt(bi)}</div></div><div><div class="k">成本</div><div class="v">${fmt(bc)}</div></div><div><div class="k">淨賺</div><div class="v net">${fmt(bi-bc)}</div></div>`;br.appendChild(sum)}
   Object.entries(byB).sort((a,b)=>b[1].c-a[1].c).forEach(([k,v])=>{const row=document.createElement("div");row.className="row";
@@ -923,7 +942,8 @@ function render(){
 }
 
 /* ---------- form ---------- */
-let fItem="", fBless="", matQty={};
+let fItem="", fBless="", matQty={}, fSel=[], amtManual=false;
+function syncSel(){fItem=fSel.join("＋")}
 function matCost(){return Math.round(settings.materials.reduce((s,m)=>s+(+matQty[m.name]||0)*(+m.price||0),0)*10)/10}
 function drawMats(){
   const box=$("mats");box.textContent="";
@@ -951,40 +971,43 @@ function drawCard(){
   c.textContent=fmt(cost);$("icAmt").textContent=fmt(amt);$("icNet").textContent=fmt(amt-cost);
 }
 function pickItem(o){
-  if(o===fItem){fItem="";drawPicker();return}
-  fItem=o;const it=settings.items.find(i=>i.name===o);
-  if(it&&it.price!=null&&it.price!=="")$("fAmount").value=it.price;
-  if(hasPreset(o)){matQty=Object.assign({},settings.presets[o]);fBless=settings.bless.includes(o)?o:""}
-  else if(isBless(o)){matQty={};fBless="";$("fCost").value=""}
-  else{matQty={};fBless="";$("fCost").value=it&&it.cost?it.cost:""}
+  const i=fSel.indexOf(o);if(i>-1)fSel.splice(i,1);else fSel.push(o);syncSel();
+  // amount: sum of the chosen items' prices, unless typed by hand
+  if(!amtManual){const ps=fSel.map(n=>(settings.items.find(x=>x.name===n)||{}).price);const known=ps.filter(v=>v!=null&&v!=="");$("fAmount").value=known.length?known.reduce((s,v)=>s+(+v),0):""}
+  // incense: add up every chosen blessing's preset
+  matQty={};fSel.filter(n=>hasPreset(n)).forEach(n=>Object.entries(settings.presets[n]).forEach(([k,v])=>matQty[k]=(matQty[k]||0)+(+v||0)));
+  const pb=fSel.find(n=>settings.bless.includes(n));fBless=pb||(fSel.some(n=>isBless(n)&&!hasPreset(n))?fBless:"");
+  if(!isBless(fItem)){const c=fSel.reduce((s,n)=>s+(+(settings.items.find(x=>x.name===n)||{}).cost||0),0);$("fCost").value=c||""}
   drawPicker();
 }
 function drawPicker(){
   const host=$("fItems");host.textContent="";
-  const groups=[["祈福",settings.items.filter(i=>isBless(i.name))],["諮詢",settings.items.filter(i=>!isBless(i.name))]];
+  const order=[];settings.items.forEach(i=>{const g=(i.group||"命理收入").trim()||"命理收入";if(!order.includes(g))order.push(g)});
+  const groups=order.map(g=>[g,settings.items.filter(i=>((i.group||"命理收入").trim()||"命理收入")===g)]);
   groups.forEach(([label,list])=>{if(!list.length)return;
     const g=document.createElement("div");g.className="tile-group";g.textContent=label;host.appendChild(g);
     const row=document.createElement("div");row.className="tile-row";
-    list.forEach(it=>{const t=document.createElement("button");t.type="button";t.className="tile";t.setAttribute("aria-pressed",it.name===fItem);
+    list.forEach(it=>{const t=document.createElement("button");t.type="button";t.className="tile";t.setAttribute("aria-pressed",fSel.includes(it.name));
       t.innerHTML='<span class="tn"></span><span class="tp"></span>';t.querySelector(".tn").textContent=it.name;
-      t.querySelector(".tp").textContent=it.price!=null&&it.price!==""?`${fmt(it.price)} 元`:"自訂金額";
+      t.querySelector(".tp").textContent=it.price===0||it.price==="0"?"免費":(it.price!=null&&it.price!==""?`${fmt(it.price)} 元`:"自訂金額");
       t.onclick=()=>pickItem(it.name);row.appendChild(t)});
     host.appendChild(row)});
-  // one detail panel for the chosen item only
-  if(fItem){const d=document.createElement("div");d.className="detail";
-    const it=settings.items.find(i=>i.name===fItem)||{};
-    if(isBless(fItem)){d.innerHTML='<div class="dn"><span></span><small>成本照香品自動算</small></div><div id="mats"></div><div class="mats-total" id="matSum"></div><div class="acc-sum"><div><span>成本</span><b id="icCost">0</b></div><div><span>收費</span><b id="icAmt">0</b></div><div class="net"><span>淨賺</span><b id="icNet">0</b></div></div>'}
-    else{d.innerHTML='<div class="dn"><span></span><small>諮詢沒有材料成本</small></div>'}
-    d.querySelector(".dn span").textContent=fItem;host.appendChild(d)}
+  // one detail panel listing everything chosen for this client
+  if(fSel.length){const d=document.createElement("div");d.className="detail";
+    d.innerHTML='<div class="dn"><span>這位客人做了</span><small>可以複選，再點一次取消</small></div><ul class="sel-list"></ul>';
+    const ul=d.querySelector(".sel-list");fSel.forEach(n=>{const it=settings.items.find(x=>x.name===n)||{};const li=document.createElement("li");
+      li.innerHTML='<span></span><b></b>';li.children[0].textContent=n;li.children[1].textContent=it.price===0?"免費":(it.price!=null&&it.price!==""?fmt(it.price)+" 元":"自訂");ul.appendChild(li)});
+    if(isBless(fItem)){const x=document.createElement("div");x.innerHTML='<div class="sel-sub">香品（照祈福項目自動加總，可以再調）</div><div id="mats"></div><div class="mats-total" id="matSum"></div><div class="acc-sum"><div><span>成本</span><b id="icCost">0</b></div><div><span>收費</span><b id="icAmt">0</b></div><div class="net"><span>淨賺</span><b id="icNet">0</b></div></div>';while(x.firstChild)d.appendChild(x.firstChild)}
+    host.appendChild(d)}
   const sel=host.querySelector('.tile[aria-pressed="true"]');if(sel)sel.scrollIntoView({block:"nearest",inline:"nearest"});
   const bless=isBless(fItem);$("costWrap").hidden=bless;
   if(bless){drawMats();drawCard()}else syncSessWrap();
-  const showCat=bless&&!hasPreset(fItem);$("blessWrap").hidden=!showCat;
+  const showCat=fSel.some(n=>isBless(n)&&!hasPreset(n));$("blessWrap").hidden=!showCat;
   chips($("fBless"),settings.bless,fBless,o=>{fBless=fBless===o?"":o;
-    const pr=fBless&&settings.presets&&settings.presets[fBless];if(pr)matQty=Object.assign({},pr);drawPicker()});
+    const pr=fBless&&settings.presets&&settings.presets[fBless];if(pr)Object.entries(pr).forEach(([k,v])=>matQty[k]=Math.max(+matQty[k]||0,+v||0));drawPicker()});
 }
 const drawChips=drawPicker;
-$("fAmount").addEventListener("input",()=>{if(isBless(fItem))drawCard()});
+$("fAmount").addEventListener("input",()=>{amtManual=true;if(isBless(fItem))drawCard()});
 function sessLabel(x){const dt=new Date(x.date+"T00:00");return `${dt.getMonth()+1}/${dt.getDate()}（週${"日一二三四五六"[dt.getDay()]}）${x.name?" "+x.name:""}`}
 function fillSessions(sel){const el=$("fSession");el.textContent="";
   const o0=document.createElement("option");o0.value="";o0.textContent="還沒排場次";el.appendChild(o0);
@@ -1011,8 +1034,8 @@ function openForm(r){
   editingId=r?r.id:null; $("formTitle").textContent=r?"修改紀錄":"記一筆";
   $("fDate").value=r?r.date:(mode==="m"&&(year!==now.getFullYear()||month!==now.getMonth()+1)?`${year}-${pad(month)}-01`:todayStr());
   $("fName").value=r?r.name||"":""; $("fIg").value=r?r.ig||"":""; $("fPaid").value=r&&r.paid===false?"0":"1"; $("fNote").value=r?r.note||"":"";
-  if(r){fItem=r.item||"";fBless=r.bless||"";matQty=r.mats?Object.assign({},r.mats):{};$("fAmount").value=r.amount;$("fCost").value=r.cost?r.cost:""}
-  else{fItem="";fBless="";matQty={};$("fAmount").value="";$("fCost").value=""}
+  if(r){fSel=Array.isArray(r.items)&&r.items.length?r.items.map(i=>i.name):(r.item?[r.item]:[]);syncSel();fBless=r.bless||"";matQty=r.mats?Object.assign({},r.mats):{};$("fAmount").value=r.amount;$("fCost").value=r.cost?r.cost:"";amtManual=true}
+  else{fSel=[];syncSel();fBless="";matQty={};$("fAmount").value="";$("fCost").value="";amtManual=false}
   drawPicker();fillSessions(r?r.sessionId||"":(()=>{const t=todayStr();const n=sessions.slice().sort((a,b)=>a.date.localeCompare(b.date)).find(x=>x.date>=t);return n?n.id:""})());syncSessWrap();$("addBg").hidden=false;
 }
 $("btnAdd").onclick=()=>openForm(null);
@@ -1021,7 +1044,7 @@ $("addBg").onclick=e=>{if(e.target.id==="addBg")$("addBg").hidden=true};
 $("addForm").addEventListener("submit",async e=>{
   e.preventDefault();
   if(!fItem){toast("請先選一個項目");return}
-  const rec={date:$("fDate").value,name:$("fName").value.trim(),ig:(()=>{const v=$("fIg").value.trim().replace(/^https?:\/\/(www\.)?instagram\.com\//i,"").replace(/[/?].*$/,"").replace(/^@+/,"");return v?"@"+v:""})(),item:fItem,bless:fBless||"",amount:Math.max(0,Math.round(+$("fAmount").value||0)),cost:Math.max(0,Math.round((+$("fCost").value||0)*10)/10),mats:BLESS_ITEMS.test(fItem)?Object.fromEntries(Object.entries(matQty).filter(([k,v])=>+v>0)):{},paid:$("fPaid").value==="1",sessionId:BLESS_ITEMS.test(fItem)?$("fSession").value:"",note:$("fNote").value.trim(),updatedAt:new Date().toISOString()};
+  const rec={date:$("fDate").value,name:$("fName").value.trim(),ig:(()=>{const v=$("fIg").value.trim().replace(/^https?:\/\/(www\.)?instagram\.com\//i,"").replace(/[/?].*$/,"").replace(/^@+/,"");return v?"@"+v:""})(),item:fItem,items:fSel.map(n=>{const it=settings.items.find(x=>x.name===n)||{};return{name:n,price:+it.price||0}}),bless:fBless||"",amount:Math.max(0,Math.round(+$("fAmount").value||0)),cost:Math.max(0,Math.round((+$("fCost").value||0)*10)/10),mats:BLESS_ITEMS.test(fItem)?Object.fromEntries(Object.entries(matQty).filter(([k,v])=>+v>0)):{},paid:$("fPaid").value==="1",sessionId:BLESS_ITEMS.test(fItem)?$("fSession").value:"",note:$("fNote").value.trim(),updatedAt:new Date().toISOString()};
   if(editingId)rec.id=editingId;
   $("fSave").disabled=true;
   try{await saveRecord(rec);$("addBg").hidden=true;toast(editingId?"已修改":"記好了");
@@ -1034,12 +1057,12 @@ $("addForm").addEventListener("submit",async e=>{
 let draft=null;
 function drawPrices(){
   const pl=$("priceList"); pl.textContent="";
-  draft.items.forEach((it,i)=>{const row=document.createElement("div");row.className="price-row";
-    row.innerHTML=`<input type="text" id="pn${i}" maxlength="30"><input type="number" id="pp${i}" min="0" inputmode="numeric" placeholder="自己填"><input type="number" id="pc${i}" min="0" inputmode="numeric" placeholder="0"><button type="button" class="mini danger">移除</button>`;
-    row.children[0].value=it.name; row.children[1].value=it.price==null?"":it.price; row.children[2].value=it.cost?it.cost:"";
-    row.children[0].oninput=e=>it.name=e.target.value; row.children[1].oninput=e=>it.price=e.target.value===""?null:+e.target.value;
-    row.children[2].oninput=e=>it.cost=e.target.value===""?0:+e.target.value;
-    row.children[3].onclick=()=>{draft.items.splice(i,1);drawPrices()}; pl.appendChild(row)});
+  const gl=$("groupList");gl.textContent="";[...new Set(draft.items.map(i=>(i.group||"").trim()).filter(Boolean))].forEach(g=>{const o=document.createElement("option");o.value=g;gl.appendChild(o)});
+  draft.items.forEach((it,i)=>{const row=document.createElement("div");row.className="item-card";
+    row.innerHTML=`<label>項目名稱<input type="text" id="pn${i}" maxlength="30"></label><div class="item-grid"><label>分類<input type="text" id="pg${i}" list="groupList" maxlength="12"></label><label>定價<input type="number" id="pp${i}" min="0" inputmode="numeric" placeholder="自訂"></label><label>成本<input type="number" id="pc${i}" min="0" inputmode="numeric" placeholder="0"></label><button type="button" class="mini danger">移除</button></div>`;
+    const [n,g,pr,c]=row.querySelectorAll("input");n.value=it.name;g.value=it.group||"命理收入";pr.value=it.price==null?"":it.price;c.value=it.cost?it.cost:"";
+    n.oninput=e=>it.name=e.target.value;g.oninput=e=>it.group=e.target.value;pr.oninput=e=>it.price=e.target.value===""?null:+e.target.value;c.oninput=e=>it.cost=e.target.value===""?0:+e.target.value;
+    row.querySelector("button").onclick=()=>{draft.items.splice(i,1);drawPrices()}; pl.appendChild(row)});
 }
 function drawMatList(){const ml=$("matList");ml.textContent="";
   draft.materials.forEach((m,i)=>{const row=document.createElement("div");row.className="mat-edit";
@@ -1049,11 +1072,11 @@ function drawMatList(){const ml=$("matList");ml.textContent="";
     row.querySelector("button").onclick=()=>{draft.materials.splice(i,1);drawMatList()};ml.appendChild(row)})}
 $("addMat").onclick=()=>{draft.materials.push({name:"",unit:"個",price:0});drawMatList()};
 $("btnSettings").onclick=()=>{draft=JSON.parse(JSON.stringify(settings));drawPrices();drawMatList();$("blessInput").value=draft.bless.join("、");$("setBg").hidden=false};
-$("addItem").onclick=()=>{const n=$("newItem").value.trim();if(!n)return;const p=$("newPrice").value,c=$("newCost").value;draft.items.push({name:n,price:p===""?null:+p,cost:c===""?0:+c});$("newItem").value="";$("newPrice").value="";$("newCost").value="";drawPrices()};
+$("addItem").onclick=()=>{const n=$("newItem").value.trim();if(!n)return;const p=$("newPrice").value,c=$("newCost").value,g=$("newGroup").value.trim()||"命理收入";draft.items.push({name:n,price:p===""?null:+p,cost:c===""?0:+c,group:g});$("newItem").value="";$("newPrice").value="";$("newCost").value="";drawPrices()};
 $("setCancel").onclick=()=>$("setBg").hidden=true;
 $("setBg").onclick=e=>{if(e.target.id==="setBg")$("setBg").hidden=true};
 $("setSave").onclick=async()=>{
-  draft.items=draft.items.filter(i=>i.name&&i.name.trim()).map(i=>({name:i.name.trim(),price:i.price,cost:+i.cost||0}));
+  draft.items=draft.items.filter(i=>i.name&&i.name.trim()).map(i=>({name:i.name.trim(),price:i.price,cost:+i.cost||0,group:(i.group||"").trim()||"命理收入"}));
   draft.materials=draft.materials.filter(m=>m.name&&m.name.trim()).map(m=>({name:m.name.trim(),unit:(m.unit||"個").trim(),price:+m.price||0}));
   draft.bless=$("blessInput").value.split(/[、,，\s]+/).map(s=>s.trim()).filter(Boolean);
   try{await saveSettings(draft);$("setBg").hidden=true;toast("設定存好了")}catch(e){toast("沒存成功，請再試一次")}
@@ -1291,8 +1314,8 @@ function periodTotals(pref){
   const le=lifeEntries.filter(e=>(e.date||"").startsWith(pref));
   const lInc=le.filter(e=>e.type==="i"&&!e.linkKey).reduce((a,e)=>a+(+e.amount||0),0),lOut=le.filter(e=>e.type==="e").reduce((a,e)=>a+(+e.amount||0),0);
   const ds=donations.filter(d=>(d.date||"").startsWith(pref));const dSelf=ds.filter(d=>d.kind!=="client").reduce((a,d)=>a+(+d.amount||0),0),dCli=ds.filter(d=>d.kind==="client").reduce((a,d)=>a+(+d.amount||0),0);
-  const bless=rs.filter(r=>BLESS_ITEMS.test(r.item||""));
-  return{pInc,pCost,pNet:pInc-pCost,pOwe,count:rs.length,blessN:bless.length,blessInc:bless.filter(r=>r.paid!==false).reduce((a,r)=>a+(+r.amount||0),0),
+  const bparts=rs.flatMap(r=>splitRec(r).filter(x=>x.bless).map(x=>Object.assign(x,{paid:r.paid!==false})));
+  return{pInc,pCost,pNet:pInc-pCost,pOwe,count:rs.length,blessN:bparts.length,blessInc:Math.round(bparts.filter(x=>x.paid).reduce((a,x)=>a+x.a,0)),
     lInc,lOut,dSelf,dCli,dN:ds.length,sheets:ds.reduce((a,d)=>a+(+d.sheets||0),0),bal:pInc-pCost+lInc-lOut-dSelf}}
 function renderAll(){
   const pref=mode==="m"?ym():String(year);const t=periodTotals(pref);
