@@ -164,6 +164,10 @@ select option{background:var(--solid);color:var(--ink)}
 .sel-list li{display:flex;justify-content:space-between;gap:10px;border-bottom:1px dashed var(--gold-line);padding:4px 0}
 .sel-list li b{font-weight:500;color:var(--gold-deep);font-variant-numeric:tabular-nums}
 .sel-sub{font-size:12px;color:var(--muted);letter-spacing:.06em;margin-top:4px}
+.preset-card{border:1px solid var(--gold-line);border-radius:16px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;background:var(--glass)}
+.preset-card .ph{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.preset-card .ph b{font-family:var(--display);letter-spacing:.1em}
+.preset-card .ph small{color:var(--gold-deep);font-variant-numeric:tabular-nums}
 .item-card{border:1px solid var(--gold-line);border-radius:16px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;background:var(--glass)}
 .add-card{border-style:dashed}
 .item-grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr) auto;gap:8px;align-items:end}
@@ -684,6 +688,12 @@ button,.acc-head,.chips button{touch-action:manipulation;-webkit-user-select:non
     <div class="mat-head"><span>材料</span><span>單位</span><span>單價</span><span></span></div>
     <div id="matList" style="display:flex;flex-direction:column;gap:8px"></div>
     <button type="button" class="glassbtn ghost" id="addMat" style="align-self:flex-start">＋ 新增材料</button>
+    <h2 style="margin-top:6px">每項祈福的香品份量</h2>
+    <p class="note">記帳時點這個項目，就會自動帶入這裡的數量並算出成本。數量填 0 就是不用。改了材料單價也會自動重算。</p>
+    <div id="presetList" style="display:flex;flex-direction:column;gap:10px"></div>
+    <label>幫其他項目也設定香品
+      <select id="presetAdd"><option value="">選一個項目…</option></select>
+    </label>
     <h2 style="margin-top:6px">帳號與備份</h2>
     <p class="note">目前登入：<b id="acctEmail"></b>。紀錄會自動同步到雲端，手機和電腦都看得到。也可以匯出一份備份留著。</p>
     <div class="backup-row">
@@ -959,8 +969,8 @@ function drawMats(){
   $("matSum").textContent=`材料成本合計 ${fmt(matCost())} 元`;
 }
 function chips(el,opts,cur,on){el.textContent="";opts.forEach(o=>{const b=document.createElement("button");b.type="button";b.textContent=o;b.setAttribute("aria-pressed",o===cur);b.onclick=()=>on(o);el.appendChild(b)})}
-const isBless=n=>BLESS_ITEMS.test(n||"");
-const hasPreset=n=>!!(settings.presets&&settings.presets[n]);
+const isBless=n=>BLESS_ITEMS.test(n||"")||hasPreset(n);
+const hasPreset=n=>{const pr=settings.presets&&settings.presets[n];return !!pr&&Object.values(pr).some(v=>+v>0)};
 function drawCard(){
   // refresh the open row's totals and keep the saved cost in step with the quantities
   syncSessWrap();
@@ -1071,11 +1081,39 @@ function drawMatList(){const ml=$("matList");ml.textContent="";
     n.oninput=e=>m.name=e.target.value;u.oninput=e=>m.unit=e.target.value;pr.oninput=e=>m.price=+e.target.value||0;
     row.querySelector("button").onclick=()=>{draft.materials.splice(i,1);drawMatList()};ml.appendChild(row)})}
 $("addMat").onclick=()=>{draft.materials.push({name:"",unit:"個",price:0});drawMatList()};
-$("btnSettings").onclick=()=>{draft=JSON.parse(JSON.stringify(settings));drawPrices();drawMatList();$("blessInput").value=draft.bless.join("、");$("setBg").hidden=false};
+let presetShown=[];
+function drawPresets(){
+  const box=$("presetList");box.textContent="";
+  const names=draft.items.map(i=>i.name).filter(Boolean);
+  const isB=n=>BLESS_ITEMS.test(n)||Object.values(draft.presets[n]||{}).some(v=>+v>0)||presetShown.includes(n);
+  const shown=names.filter(isB);
+  shown.forEach(n=>{const pr=draft.presets[n]=draft.presets[n]||{};const c=document.createElement("div");c.className="preset-card";
+    c.innerHTML='<div class="ph"><b></b><small></small></div>';c.querySelector("b").textContent=n;const tot=c.querySelector("small");
+    const upd=()=>{tot.textContent="成本 "+fmt(draft.materials.reduce((s,m)=>s+(+pr[m.name]||0)*(+m.price||0),0))+" 元"};
+    draft.materials.filter(m=>m.name).forEach(m=>{const row=document.createElement("div");row.className="mat-row";
+      row.innerHTML='<div class="mn"></div><div class="stepper"><button type="button" aria-label="減少">−</button><input type="number" min="0" step="1" inputmode="numeric"><button type="button" aria-label="增加">＋</button></div><div class="ms"></div>';
+      row.querySelector(".mn").textContent=m.name;const u=document.createElement("small");u.textContent=`${fmt(m.price)} 元／${m.unit}`;row.querySelector(".mn").appendChild(u);
+      const inp=row.querySelector("input"),ms=row.querySelector(".ms");inp.value=pr[m.name]||"";
+      const set=v=>{v=Math.max(0,Math.floor(+v||0));if(v)pr[m.name]=v;else delete pr[m.name];inp.value=v||"";ms.textContent=v?fmt(v*m.price):"—";upd()};
+      inp.oninput=()=>set(inp.value);const [dn,up]=row.querySelectorAll("button");dn.onclick=()=>set((+pr[m.name]||0)-1);up.onclick=()=>set((+pr[m.name]||0)+1);
+      ms.textContent=pr[m.name]?fmt(pr[m.name]*m.price):"—";c.appendChild(row)});
+    upd();box.appendChild(c)});
+  if(!shown.length)box.innerHTML='<p class="note">還沒有祈福項目。</p>';
+  const sel=$("presetAdd");sel.textContent="";const o0=document.createElement("option");o0.value="";o0.textContent="選一個項目…";sel.appendChild(o0);
+  names.filter(n=>!isB(n)).forEach(n=>{const o=document.createElement("option");o.value=n;o.textContent=n;sel.appendChild(o)});
+  sel.parentElement.hidden=sel.options.length<2;
+}
+$("presetAdd").onchange=e=>{if(e.target.value){presetShown.push(e.target.value);drawPresets()}};
+$("btnSettings").onclick=()=>{draft=JSON.parse(JSON.stringify(settings));draft.presets=draft.presets||{};draft.items.forEach(i=>i._orig=i.name);draft.materials.forEach(m=>m._orig=m.name);presetShown=[];drawPrices();drawMatList();drawPresets();$("blessInput").value=draft.bless.join("、");$("setBg").hidden=false};
 $("addItem").onclick=()=>{const n=$("newItem").value.trim();if(!n)return;const p=$("newPrice").value,c=$("newCost").value,g=$("newGroup").value.trim()||"命理收入";draft.items.push({name:n,price:p===""?null:+p,cost:c===""?0:+c,group:g});$("newItem").value="";$("newPrice").value="";$("newCost").value="";drawPrices()};
 $("setCancel").onclick=()=>$("setBg").hidden=true;
 $("setBg").onclick=e=>{if(e.target.id==="setBg")$("setBg").hidden=true};
 $("setSave").onclick=async()=>{
+  // keep each item's and material's incense amounts when they are renamed
+  const pres={};Object.entries(draft.presets||{}).forEach(([k,v])=>pres[k]=Object.assign({},v));
+  draft.materials.forEach(m=>{const nn=(m.name||"").trim();if(m._orig&&nn&&m._orig!==nn)Object.values(pres).forEach(pr=>{if(m._orig in pr){pr[nn]=pr[m._orig];delete pr[m._orig]}})});
+  draft.items.forEach(i=>{const nn=(i.name||"").trim();if(i._orig&&nn&&i._orig!==nn&&pres[i._orig]){pres[nn]=pres[i._orig];pres[i._orig]={}}});
+  draft.presets=pres;
   draft.items=draft.items.filter(i=>i.name&&i.name.trim()).map(i=>({name:i.name.trim(),price:i.price,cost:+i.cost||0,group:(i.group||"").trim()||"命理收入"}));
   draft.materials=draft.materials.filter(m=>m.name&&m.name.trim()).map(m=>({name:m.name.trim(),unit:(m.unit||"個").trim(),price:+m.price||0}));
   draft.bless=$("blessInput").value.split(/[、,，\s]+/).map(s=>s.trim()).filter(Boolean);
